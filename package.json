@@ -1,0 +1,797 @@
+{
+  "name": "codevim",
+  "displayName": "CodeVim",
+  "description": "Embed your real Neovim (and your config) inside VS Code, with seamless navigation between the two.",
+  "version": "0.1.0",
+  "publisher": "codevim",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Keymaps",
+    "Other"
+  ],
+  "keywords": [
+    "vim",
+    "neovim",
+    "nvim",
+    "modal"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "gen:keybindings": "node scripts/gen-keybindings.mjs",
+    "test": "vitest run",
+    "test:e2e": "npm run build && node test/e2e/run.mjs",
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --skip-license"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "codevim.restart",
+        "title": "Restart Neovim",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.toggle",
+        "title": "Toggle (enable/disable)",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.resync",
+        "title": "Resync all documents to Neovim",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.showLog",
+        "title": "Show Log",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.showMessages",
+        "title": "Show Neovim Messages",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.showSurface",
+        "title": "Show Neovim Surface",
+        "category": "CodeVim"
+      }
+    ],
+    "configuration": {
+      "title": "CodeVim",
+      "properties": {
+        "codevim.neovimPath": {
+          "type": "string",
+          "default": "nvim",
+          "scope": "machine-overridable",
+          "description": "Path to the Neovim executable (0.10 or newer)."
+        },
+        "codevim.neovimArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "machine-overridable",
+          "markdownDescription": "Extra arguments for Neovim, e.g. `[\"-u\", \"~/.config/nvim/vscode.lua\"]`. `--embed` is always added."
+        },
+        "codevim.neovimAppName": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Sets `NVIM_APPNAME` to use a separate config directory (e.g. `nvim-vscode`). Empty uses your normal config."
+        },
+        "codevim.setVscodeGlobal": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also set `vim.g.vscode` (not just `vim.g.codevim`), so configs written for vscode-neovim work unchanged."
+        },
+        "codevim.documentSchemes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "file",
+            "untitled",
+            "vscode-userdata",
+            "vscode-remote"
+          ],
+          "description": "URI schemes of documents that are edited through Neovim."
+        },
+        "codevim.features": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "Turn optional features off, e.g. `{ \"surface\": false }`.",
+          "properties": {
+            "viewport": {
+              "type": "boolean",
+              "default": true,
+              "description": "Sync scrolling and window height."
+            },
+            "cmdline": {
+              "type": "boolean",
+              "default": true,
+              "description": "Command line in the status bar."
+            },
+            "messages": {
+              "type": "boolean",
+              "default": true,
+              "description": "Neovim messages in the status bar / output."
+            },
+            "searchHighlight": {
+              "type": "boolean",
+              "default": true,
+              "description": "Highlight search matches."
+            },
+            "optionSync": {
+              "type": "boolean",
+              "default": true,
+              "description": "Apply 'number'/'relativenumber'."
+            },
+            "surface": {
+              "type": "boolean",
+              "default": true,
+              "description": "Render plugin UIs and floats in a webview."
+            },
+            "floats": {
+              "type": "boolean",
+              "default": true,
+              "description": "Draw floating windows over the editor."
+            }
+          }
+        },
+        "codevim.insert.strategy": {
+          "type": "string",
+          "enum": [
+            "vscode",
+            "neovim"
+          ],
+          "default": "vscode",
+          "markdownEnumDescriptions": [
+            "VS Code handles typing in insert mode (IntelliSense, snippets, multi-cursor, IME). Changes are synced to Neovim and `.` repeat is preserved for plain typing.",
+            "Experimental: every key goes to Neovim, including in insert mode (insert-mode mappings, abbreviations, Neovim completion)."
+          ]
+        },
+        "codevim.insert.escapeSequence": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Two characters that leave insert mode when typed quickly, e.g. `jk`. Empty disables."
+        },
+        "codevim.insert.escapeSequenceTimeout": {
+          "type": "number",
+          "default": 300,
+          "description": "Maximum delay (ms) between the two escape-sequence characters."
+        },
+        "codevim.insert.dotRepeat": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Replay text typed in VS Code into Neovim on `<Esc>` so `.` repeats it."
+        },
+        "codevim.ctrlKeys.normal": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "a",
+            "b",
+            "d",
+            "e",
+            "f",
+            "i",
+            "o",
+            "r",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "]",
+            "6",
+            "["
+          ],
+          "markdownDescription": "Ctrl+key combinations sent to Neovim in normal/visual mode; others keep their VS Code meaning. Use `space`, `]`, `[`, `6` (`<C-^>`) or `/` for non-letters."
+        },
+        "codevim.ctrlKeys.insert": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "w",
+            "u",
+            "o",
+            "t",
+            "d",
+            "["
+          ],
+          "description": "Ctrl+key combinations sent to Neovim in insert mode."
+        },
+        "codevim.ctrlKeys.cmdline": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "a",
+            "b",
+            "e",
+            "f",
+            "g",
+            "h",
+            "k",
+            "n",
+            "p",
+            "r",
+            "t",
+            "u",
+            "v",
+            "w",
+            "["
+          ],
+          "description": "Ctrl+key combinations sent to Neovim on the command line."
+        },
+        "codevim.ctrlKeys.plugin": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "a",
+            "b",
+            "c",
+            "d",
+            "e",
+            "f",
+            "g",
+            "h",
+            "i",
+            "j",
+            "k",
+            "l",
+            "m",
+            "n",
+            "o",
+            "p",
+            "q",
+            "r",
+            "s",
+            "t",
+            "u",
+            "v",
+            "w",
+            "x",
+            "y",
+            "z",
+            "[",
+            "]"
+          ],
+          "description": "Ctrl+key combinations sent to Neovim while a floating window (e.g. telescope) or plugin buffer has Neovim's focus."
+        },
+        "codevim.floats.display": {
+          "type": "string",
+          "enum": [
+            "overlay",
+            "surface",
+            "none"
+          ],
+          "default": "overlay",
+          "markdownEnumDescriptions": [
+            "Draw floating windows (telescope, lazy, which-key, previews…) on top of the editor, in the VS Code theme. Keys go to the float while it is focused.",
+            "Show them in the separate \"Neovim\" surface tab, with your Neovim colourscheme.",
+            "Do not show floating windows."
+          ]
+        },
+        "codevim.floats.colors": {
+          "type": "string",
+          "enum": [
+            "vscode",
+            "neovim"
+          ],
+          "default": "vscode",
+          "markdownEnumDescriptions": [
+            "Map each float's base colours, selection and border onto the VS Code theme (accent colours are kept).",
+            "Use your Neovim colourscheme's colours as-is."
+          ]
+        },
+        "codevim.pluginBuffers.display": {
+          "type": "string",
+          "enum": [
+            "editor",
+            "surface"
+          ],
+          "default": "editor",
+          "markdownEnumDescriptions": [
+            "Open plugin buffers (`:help`, oil, fugitive, quickfix, terminal…) as normal VS Code editors.",
+            "Show them in the \"Neovim\" surface tab."
+          ]
+        },
+        "codevim.pluginBuffers.viewColumn": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "active",
+            "beside"
+          ],
+          "default": "auto",
+          "markdownEnumDescriptions": [
+            "Beside the current editor when Neovim opened it in a split (`:help`, `:Git`, `:copen`), otherwise in place (oil).",
+            "Always in the current editor group.",
+            "Always beside the current editor."
+          ]
+        },
+        "codevim.clipboard.useVscode": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Provide the `+`/`*` registers through VS Code's clipboard (unless your config sets `g:clipboard`)."
+        },
+        "codevim.notifications.routeVimNotify": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show `vim.notify()` messages as VS Code notifications."
+        },
+        "codevim.navigation.windowKeymaps": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Map `<C-w>h/j/k/l/v/s/q/o/=...` to VS Code editor-group commands."
+        },
+        "codevim.navigation.commandAbbreviations": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Make `:q`, `:wq`, `:x`, `:qa`, `:sp`, `:vs`, `:new` and `:only` act on VS Code editors."
+        },
+        "codevim.messages.errorsAsNotifications": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show Neovim error messages as VS Code notifications instead of only in the status bar."
+        },
+        "codevim.viewport.syncScroll": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep Neovim's scroll position and the editor's in sync."
+        },
+        "codevim.syncIndentOptions": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Set `tabstop`/`shiftwidth`/`expandtab` of each buffer from the VS Code editor's indentation."
+        },
+        "codevim.uiWidth": {
+          "type": "number",
+          "default": 120,
+          "description": "Width (columns) of Neovim's screen. Floating windows such as telescope size themselves to it, so set it to roughly the number of columns your editor shows."
+        },
+        "codevim.cursorStyle.normal": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "block",
+          "description": "Cursor in normal mode."
+        },
+        "codevim.cursorStyle.insert": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "line",
+          "description": "Cursor in insert mode."
+        },
+        "codevim.cursorStyle.visual": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "line-thin",
+          "description": "Cursor in visual modes."
+        },
+        "codevim.cursorStyle.replace": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "underline",
+          "description": "Cursor in replace mode."
+        },
+        "codevim.cursorStyle.operator": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "underline",
+          "description": "Cursor while an operator is pending (after d, c, y...)."
+        },
+        "codevim.cursorStyle.cmdline": {
+          "type": "string",
+          "enum": [
+            "block",
+            "block-outline",
+            "line",
+            "line-thin",
+            "underline",
+            "underline-thin"
+          ],
+          "default": "block-outline",
+          "description": "Cursor while typing on the command line."
+        },
+        "codevim.surface.viewColumn": {
+          "type": "string",
+          "enum": [
+            "active",
+            "beside"
+          ],
+          "default": "active",
+          "description": "Where the Neovim surface opens (only used when floats.display or pluginBuffers.display is \"surface\")."
+        },
+        "codevim.surface.unfocusedFloats": {
+          "type": "string",
+          "enum": [
+            "none",
+            "focusable",
+            "all"
+          ],
+          "default": "focusable",
+          "markdownDescription": "Also show the surface (beside the editor, without taking focus) for floating windows you are not in, e.g. gitsigns previews. `all` includes non-focusable floats such as which-key."
+        },
+        "codevim.surface.fontFamily": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Font for the surface. Empty uses `editor.fontFamily`."
+        },
+        "codevim.surface.fontSize": {
+          "type": "number",
+          "default": 0,
+          "markdownDescription": "Font size for the surface. 0 uses `editor.fontSize`."
+        },
+        "codevim.surface.passthroughKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "ctrl+shift+p",
+            "ctrl+shift+e",
+            "ctrl+`",
+            "ctrl+tab"
+          ],
+          "markdownDescription": "Keys the surface leaves to VS Code instead of sending to Neovim (format: `ctrl+shift+p`)."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "key": "escape",
+        "command": "codevim.escape",
+        "when": "editorTextFocus && codevim.active && codevim.mode != 'normal'"
+      },
+      {
+        "key": "escape",
+        "command": "codevim.escape",
+        "when": "editorTextFocus && codevim.active && codevim.mode == 'normal' && !findWidgetVisible && !referenceSearchVisible && !markersNavigationVisible && !parameterHintsVisible && !suggestWidgetVisible && !inSnippetMode && !notificationToastsVisible && !renameInputVisible"
+      },
+      {
+        "key": "backspace",
+        "command": "codevim.send",
+        "args": "<BS>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "shift+backspace",
+        "command": "codevim.send",
+        "args": "<S-BS>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "delete",
+        "command": "codevim.send",
+        "args": "<Del>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "enter",
+        "command": "codevim.send",
+        "args": "<CR>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "shift+enter",
+        "command": "codevim.send",
+        "args": "<S-CR>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "tab",
+        "command": "codevim.send",
+        "args": "<Tab>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "shift+tab",
+        "command": "codevim.send",
+        "args": "<S-Tab>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "up",
+        "command": "codevim.send",
+        "args": "<Up>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "down",
+        "command": "codevim.send",
+        "args": "<Down>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "left",
+        "command": "codevim.send",
+        "args": "<Left>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "right",
+        "command": "codevim.send",
+        "args": "<Right>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "home",
+        "command": "codevim.send",
+        "args": "<Home>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "end",
+        "command": "codevim.send",
+        "args": "<End>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "pageup",
+        "command": "codevim.send",
+        "args": "<PageUp>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "pagedown",
+        "command": "codevim.send",
+        "args": "<PageDown>",
+        "when": "editorTextFocus && codevim.active && codevim.captureKeys"
+      },
+      {
+        "key": "ctrl+a",
+        "command": "codevim.send",
+        "args": "<C-a>",
+        "when": "editorTextFocus && codevim.active && 'a' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+b",
+        "command": "codevim.send",
+        "args": "<C-b>",
+        "when": "editorTextFocus && codevim.active && 'b' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+c",
+        "command": "codevim.send",
+        "args": "<C-c>",
+        "when": "editorTextFocus && codevim.active && 'c' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+d",
+        "command": "codevim.send",
+        "args": "<C-d>",
+        "when": "editorTextFocus && codevim.active && 'd' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+e",
+        "command": "codevim.send",
+        "args": "<C-e>",
+        "when": "editorTextFocus && codevim.active && 'e' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+f",
+        "command": "codevim.send",
+        "args": "<C-f>",
+        "when": "editorTextFocus && codevim.active && 'f' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+g",
+        "command": "codevim.send",
+        "args": "<C-g>",
+        "when": "editorTextFocus && codevim.active && 'g' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+h",
+        "command": "codevim.send",
+        "args": "<C-h>",
+        "when": "editorTextFocus && codevim.active && 'h' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+i",
+        "command": "codevim.send",
+        "args": "<C-i>",
+        "when": "editorTextFocus && codevim.active && 'i' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+j",
+        "command": "codevim.send",
+        "args": "<C-j>",
+        "when": "editorTextFocus && codevim.active && 'j' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+k",
+        "command": "codevim.send",
+        "args": "<C-k>",
+        "when": "editorTextFocus && codevim.active && 'k' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+l",
+        "command": "codevim.send",
+        "args": "<C-l>",
+        "when": "editorTextFocus && codevim.active && 'l' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+m",
+        "command": "codevim.send",
+        "args": "<C-m>",
+        "when": "editorTextFocus && codevim.active && 'm' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+n",
+        "command": "codevim.send",
+        "args": "<C-n>",
+        "when": "editorTextFocus && codevim.active && 'n' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+o",
+        "command": "codevim.send",
+        "args": "<C-o>",
+        "when": "editorTextFocus && codevim.active && 'o' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+p",
+        "command": "codevim.send",
+        "args": "<C-p>",
+        "when": "editorTextFocus && codevim.active && 'p' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+q",
+        "command": "codevim.send",
+        "args": "<C-q>",
+        "when": "editorTextFocus && codevim.active && 'q' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+r",
+        "command": "codevim.send",
+        "args": "<C-r>",
+        "when": "editorTextFocus && codevim.active && 'r' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+s",
+        "command": "codevim.send",
+        "args": "<C-s>",
+        "when": "editorTextFocus && codevim.active && 's' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+t",
+        "command": "codevim.send",
+        "args": "<C-t>",
+        "when": "editorTextFocus && codevim.active && 't' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+u",
+        "command": "codevim.send",
+        "args": "<C-u>",
+        "when": "editorTextFocus && codevim.active && 'u' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+v",
+        "command": "codevim.send",
+        "args": "<C-v>",
+        "when": "editorTextFocus && codevim.active && 'v' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+w",
+        "command": "codevim.send",
+        "args": "<C-w>",
+        "when": "editorTextFocus && codevim.active && 'w' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+x",
+        "command": "codevim.send",
+        "args": "<C-x>",
+        "when": "editorTextFocus && codevim.active && 'x' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+y",
+        "command": "codevim.send",
+        "args": "<C-y>",
+        "when": "editorTextFocus && codevim.active && 'y' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+z",
+        "command": "codevim.send",
+        "args": "<C-z>",
+        "when": "editorTextFocus && codevim.active && 'z' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+]",
+        "command": "codevim.send",
+        "args": "<C-]>",
+        "when": "editorTextFocus && codevim.active && ']' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+6",
+        "command": "codevim.send",
+        "args": "<C-^>",
+        "when": "editorTextFocus && codevim.active && '6' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+/",
+        "command": "codevim.send",
+        "args": "<C-/>",
+        "when": "editorTextFocus && codevim.active && '/' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+space",
+        "command": "codevim.send",
+        "args": "<C-Space>",
+        "when": "editorTextFocus && codevim.active && 'space' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+[",
+        "command": "codevim.escape",
+        "when": "editorTextFocus && codevim.active && '[' in codevim.ctrlKeys"
+      },
+      {
+        "key": "ctrl+shift+alt+n",
+        "command": "codevim.toggle"
+      }
+    ]
+  },
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
