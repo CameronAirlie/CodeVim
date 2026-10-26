@@ -38,15 +38,37 @@ describe('buildOverlay', () => {
   it('maps base, selection, border and accent colours onto the theme', () => {
     const runs = buildOverlay(screen(), [float], { colors: 'vscode' });
     const at = (row: number, text: string) => runs.find((r) => r.row === row && r.text.includes(text))!;
-    expect(at(1, '╭')).toMatchObject({ fg: { theme: 'editorWidget.border' }, bg: { theme: 'editorWidget.background' } });
-    expect(at(2, 'a')).toMatchObject({ fg: { rgb: '#ff8800' }, bg: { theme: 'editorWidget.background' } });
-    expect(at(2, 'b')).toMatchObject({ fg: { theme: 'editorWidget.foreground' } });
-    expect(at(3, 'sel')).toMatchObject({ fg: { theme: 'list.activeSelectionForeground' }, bg: { theme: 'list.activeSelectionBackground' } });
+    expect(at(1, '╭')).toMatchObject({ fg: { theme: 'editorWidget.border' }, bg: { theme: 'editorSuggestWidget.background' } });
+    expect(at(2, 'a')).toMatchObject({ fg: { rgb: '#ff8800' }, bg: { theme: 'editorSuggestWidget.background' } });
+    expect(at(2, 'b')).toMatchObject({ fg: { theme: 'editorSuggestWidget.foreground' } });
+    expect(at(3, 'sel')).toMatchObject({
+      fg: { theme: 'list.activeSelectionForeground' },
+      bg: { theme: 'editorSuggestWidget.selectedBackground' },
+      baseBg: { theme: 'editorSuggestWidget.background' },
+    });
+  });
+
+  it('draws a float you are in like Quick Open, and a short one like its input box', () => {
+    const tall = buildOverlay(screen(), [{ ...float, height: 4 }], { colors: 'vscode', focusedWin: float.win });
+    expect(tall.find((r) => r.text.includes('sel'))).toMatchObject({ bg: { theme: 'quickInputList.focusBackground' } });
+    expect(tall.find((r) => r.text.includes('b'))).toMatchObject({ bg: { theme: 'quickInput.background' } });
+    const prompt = buildOverlay(screen(), [float], { colors: 'vscode', focusedWin: float.win });
+    expect(prompt.find((r) => r.text.includes('b'))).toMatchObject({ bg: { theme: 'input.background' } });
+    const other = buildOverlay(screen(), [float], { colors: 'vscode', focusedWin: 999 });
+    expect(other.find((r) => r.text.includes('b'))).toMatchObject({ bg: { theme: 'quickInput.background' } });
   });
 
   it('draws the cursor as its own cell', () => {
     const runs = buildOverlay(screen(), [float], { colors: 'vscode', cursor: { row: 2, col: 4 } });
     expect(runs.find((r) => r.row === 2 && r.col === 4)).toMatchObject({ text: 'b', bg: { theme: 'editorCursor.foreground' } });
+  });
+
+  it('uses the editor colours for default-coloured cells with a transparent colorscheme', () => {
+    const g = screen();
+    g.apply(parseRedraw([['hl_attr_define', [4, { foreground: 0xff8800 }, {}, []]], ['grid_line', [1, 2, 3, [['a', 4]], false]]]));
+    const runs = buildOverlay(g, [float], { colors: 'neovim', transparent: { fg: true, bg: true } });
+    expect(runs.find((r) => r.row === 2 && r.text === 'a')).toMatchObject({ fg: { rgb: '#ff8800' }, bg: { theme: 'editor.background' } });
+    expect(runs.find((r) => r.row === 1)).toMatchObject({ bg: { rgb: '#222222' } });
   });
 
   it('clips floats that extend past the screen', () => {

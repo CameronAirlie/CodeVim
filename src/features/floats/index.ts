@@ -12,6 +12,10 @@ function color(c: OverlayColor | undefined): string | vscode.ThemeColor | undefi
   return 'theme' in c ? new vscode.ThemeColor(c.theme) : c.rgb;
 }
 
+function sameColor(a: OverlayColor, b: OverlayColor): boolean {
+  return 'theme' in a ? 'theme' in b && a.theme === b.theme : 'rgb' in b && a.rgb === b.rgb;
+}
+
 /** The colour as a CSS value, for use in raw CSS. */
 function cssColor(c: OverlayColor): string {
   return 'theme' in c ? themeVar(c.theme) : c.rgb;
@@ -31,13 +35,17 @@ class FloatOverlayFeature implements vscode.Disposable {
   private readonly decoration = vscode.window.createTextEditorDecorationType({});
   private decorated: vscode.TextEditor | undefined;
   private timer: NodeJS.Timeout | undefined;
+  private transparent = { fg: false, bg: false };
 
   constructor(private readonly ctx: FeatureContext) {
     const d = this.disposables;
     d.add(this.decoration);
+    this.grid.apply(ctx.session.redrawSnapshot());
     d.add(ctx.session.bus.on('redraw', (events) => {
+      if (events.some((e) => e.name === 'default_colors_set')) void this.checkTransparent();
       if (this.grid.apply(events)) this.schedule();
     }));
+    void this.checkTransparent();
     d.add(ctx.session.onDidChangeWindow(() => this.schedule()));
     d.add(vscode.window.onDidChangeActiveTextEditor(() => this.schedule()));
     d.add(vscode.window.onDidChangeTextEditorVisibleRanges(() => this.schedule()));
@@ -49,6 +57,20 @@ class FloatOverlayFeature implements vscode.Disposable {
       this.timer = undefined;
       this.render();
     }, RENDER_DELAY_MS);
+  }
+
+  /** Whether the colorscheme leaves Normal's colours unset (see OverlayOptions.transparent). */
+  private async checkTransparent(): Promise<void> {
+    try {
+      const normal = await this.ctx.session.request<{ fg?: number; bg?: number }>('nvim_get_hl', [0, { name: 'Normal', link: false }]);
+      const next = { fg: normal.fg === undefined, bg: normal.bg === undefined };
+      if (next.fg !== this.transparent.fg || next.bg !== this.transparent.bg) {
+        this.transparent = next;
+        this.schedule();
+      }
+    } catch {
+      // Session closing.
+    }
   }
 
   private clear(): void {
@@ -66,7 +88,12 @@ class FloatOverlayFeature implements vscode.Disposable {
     }
     if (this.decorated && this.decorated !== editor) this.clear();
     const inFloat = w.is_float && w.floats.some((f) => f.win === w.win);
-    const runs = buildOverlay(this.grid, w.floats, { colors: cfg.colors, cursor: inFloat ? this.grid.cursor : undefined });
+    const runs = buildOverlay(this.grid, w.floats, {
+      colors: cfg.colors,
+      cursor: inFloat ? this.grid.cursor : undefined,
+      focusedWin: inFloat ? w.win : undefined,
+      transparent: this.transparent,
+    });
     const top = editor.visibleRanges[0]?.start.line ?? 0;
     const lh = lineHeightPx(editor.document);
     const anchor = new vscode.Range(top, 0, top, 0);
@@ -80,9 +107,11 @@ class FloatOverlayFeature implements vscode.Disposable {
   private attachment(r: OverlayRun, lh: number): vscode.ThemableDecorationAttachmentRenderOptions {
     const lines = [r.underline ? 'underline' : '', r.strikethrough ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
     // Theme colours such as list.activeSelectionBackground are often translucent and
-    // would let the editor text underneath show through: paint them as a layer over
-    // the opaque editor background instead.
-    const bg = r.bg ? ` background-image: linear-gradient(${cssColor(r.bg)}, ${cssColor(r.bg)});` : '';
+    // would let the editor text underneath show through: paint them as layers (the
+    // selection over the widget's own background) over the opaque editor background.
+    const layer = (c: OverlayColor) => `linear-gradient(${cssColor(c)}, ${cssColor(c)})`;
+    const layers = r.bg ? [r.bg, ...(r.baseBg && !sameColor(r.baseBg, r.bg) ? [r.baseBg] : [])] : [];
+    const bg = layers.length ? ` background-image: ${layers.map(layer).join(', ')};` : '';
     return {
       contentText: contentText(r.text),
       color: color(r.fg),

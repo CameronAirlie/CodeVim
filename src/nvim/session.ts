@@ -67,6 +67,9 @@ export class NvimSession implements Disposable {
   readonly onDidChangeWindow = this.windowEmitter.event;
 
   private readonly requestHandlers = new Map<string, (params: never) => unknown>();
+  /** See {@link redrawSnapshot}. Insertion order keeps mode_info_set before mode_change. */
+  private readonly redrawState = new Map<string, RedrawEvent>();
+  private readonly hlDefs = new Map<number, RedrawEvent>();
   private readonly exitEmitter = new Emitter<number | null>();
   readonly onDidExit = this.exitEmitter.event;
   private disposed = false;
@@ -224,11 +227,40 @@ export class NvimSession implements Disposable {
     });
   }
 
+  /**
+   * Redraw events that set state Neovim sends only once: highlight definitions (sent
+   * when an id is first used), default colours, cursor shapes and the grid size.
+   * Features start after your config has drawn the first screens, so they replay
+   * these with {@link redrawSnapshot} or would draw with missing highlights.
+   */
+  redrawSnapshot(): RedrawEvent[] {
+    return [...this.redrawState.values(), ...this.hlDefs.values()];
+  }
+
+  private recordRedrawState(events: RedrawEvent[]): void {
+    for (const e of events) {
+      switch (e.name) {
+        case 'hl_attr_define':
+          this.hlDefs.set(e.args[0] as number, e);
+          break;
+        case 'default_colors_set':
+        case 'mode_info_set':
+        case 'mode_change':
+        case 'grid_resize':
+          this.redrawState.set(e.name, e);
+          break;
+      }
+    }
+  }
+
   private onNotification(method: string, params: unknown[]): void {
     switch (method) {
-      case 'redraw':
-        this.bus.emit('redraw', parseRedraw(params));
+      case 'redraw': {
+        const events = parseRedraw(params);
+        this.recordRedrawState(events);
+        this.bus.emit('redraw', events);
         return;
+      }
       case 'nvim_buf_lines_event': {
         const [buf, changedtick, first, last, lines, more] = params as [number, number, number, number, string[], boolean];
         this.bus.emit('bufLines', { buf, changedtick, first, last, lines, more });

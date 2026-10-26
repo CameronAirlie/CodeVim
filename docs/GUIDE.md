@@ -140,10 +140,15 @@ opens it in VS Code. Clicking the editor closes the float.
 
 Colours follow the VS Code theme (`codevim.floats.colors: "vscode"`):
 
-- the float's base colours become the widget background and foreground,
-- the selected entry uses the list selection colour,
-- borders use the widget border colour,
+- a float you are in (Telescope, lazy…) looks like Quick Open, and a short one (a
+  picker's prompt) like its input box,
+- floats shown while you keep typing (completion, which-key, hover…) look like
+  IntelliSense,
+- the selected entry uses that widget's selection colour, borders its border colour,
 - accent colours (matches, icons) keep Neovim's values.
+
+With `"neovim"`, Neovim's own colours are used; a transparent colorscheme's floats
+take the editor background.
 
 Set `"neovim"` to use your Neovim colourscheme instead.
 

@@ -32,6 +32,7 @@ class SurfaceFeature implements vscode.Disposable {
 
   constructor(private readonly ctx: FeatureContext) {
     const d = this.disposables;
+    this.grid.apply(ctx.session.redrawSnapshot());
     d.add(ctx.session.bus.on('redraw', (events) => {
       const flushed = this.grid.apply(events);
       if (reduceCmdline(this.cmdline, events)) this.post({ type: 'cmdline', state: this.cmdline });

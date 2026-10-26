@@ -12,6 +12,8 @@ export interface OverlayRun {
   zindex: number;
   fg?: OverlayColor;
   bg?: OverlayColor;
+  /** Opaque colour under `bg`, which may be translucent (theme selection colours). */
+  baseBg?: OverlayColor;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -23,11 +25,22 @@ export interface OverlayOptions {
   colors: 'vscode' | 'neovim';
   /** Screen position of Neovim's cursor when it is inside a float. */
   cursor?: { row: number; col: number };
+  /** The float Neovim's focus is in, if any (decides which VS Code widget it looks like). */
+  focusedWin?: number;
+  /**
+   * Neovim's Normal group has no foreground/background (a transparent colorscheme).
+   * The default colours are then stand-ins (black/white), so cells using them take
+   * the VS Code editor's colours instead.
+   */
+  transparent?: { fg: boolean; bg: boolean };
 }
 
 interface CellStyle {
   fg: string;
   bg: string;
+  /** The colour is the default one (no colour of its own). */
+  defaultFg?: boolean;
+  defaultBg?: boolean;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
@@ -36,12 +49,63 @@ interface CellStyle {
 
 const BOX_DRAWING = /^[─-╿]+$/;
 
+/** Theme colours of the VS Code widget a float is drawn as. All have built-in defaults. */
+interface Palette {
+  bg: string;
+  fg: string;
+  border: string;
+  selectedBg: string;
+  selectedFg: string;
+}
+
+const PALETTES = {
+  // A float you are in (telescope, lazy…): like Quick Open.
+  picker: {
+    bg: 'quickInput.background',
+    fg: 'quickInput.foreground',
+    border: 'editorWidget.border',
+    selectedBg: 'quickInputList.focusBackground',
+    selectedFg: 'quickInputList.focusForeground',
+  },
+  // A short float you are in (a picker's prompt): like Quick Open's input box.
+  input: {
+    bg: 'input.background',
+    fg: 'input.foreground',
+    border: 'editorWidget.border',
+    selectedBg: 'quickInputList.focusBackground',
+    selectedFg: 'quickInputList.focusForeground',
+  },
+  // Floats shown while you keep typing (completion, which-key, hover…): like IntelliSense.
+  popup: {
+    bg: 'editorSuggestWidget.background',
+    fg: 'editorSuggestWidget.foreground',
+    // Not editorSuggestWidget.border: themes often make it near-black, and Neovim
+    // draws every float's border alike.
+    border: 'editorWidget.border',
+    selectedBg: 'editorSuggestWidget.selectedBackground',
+    selectedFg: 'list.activeSelectionForeground',
+  },
+} satisfies Record<string, Palette>;
+
+/** Inner height (border included) up to which a focused float counts as an input line. */
+const INPUT_MAX_HEIGHT = 3;
+
+function paletteFor(f: FloatInfo, focusedWin: number | undefined): Palette {
+  if (focusedWin === undefined) return PALETTES.popup;
+  return f.win === focusedWin && f.height <= INPUT_MAX_HEIGHT ? PALETTES.input : PALETTES.picker;
+}
+
 function cellStyle(grid: GridModel, hl: number): CellStyle {
   const h = grid.highlights.get(hl) ?? {};
   let fg = h.fg ?? grid.defaults.fg;
   let bg = h.bg ?? grid.defaults.bg;
-  if (h.reverse) [fg, bg] = [bg, fg];
-  return { fg, bg, bold: h.bold, italic: h.italic, underline: h.underline || h.undercurl, strikethrough: h.strikethrough };
+  let defaultFg = h.fg === undefined;
+  let defaultBg = h.bg === undefined;
+  if (h.reverse) {
+    [fg, bg] = [bg, fg];
+    [defaultFg, defaultBg] = [defaultBg, defaultFg];
+  }
+  return { fg, bg, defaultFg, defaultBg, bold: h.bold, italic: h.italic, underline: h.underline || h.undercurl, strikethrough: h.strikethrough };
 }
 
 function mostCommon(values: string[]): string | undefined {
@@ -95,15 +159,22 @@ export function buildOverlay(grid: GridModel, floats: readonly FloatInfo[], opts
     const baseBg = mostCommon(bgs);
     const baseFg = mostCommon(fgs) ?? grid.defaults.fg;
 
-    const map = (st: CellStyle, text: string): { fg?: OverlayColor; bg?: OverlayColor } => {
-      if (opts.colors === 'neovim') return { fg: { rgb: st.fg }, bg: { rgb: st.bg } };
+    const palette = paletteFor(f, opts.focusedWin);
+    const map = (st: CellStyle, text: string): { fg?: OverlayColor; bg?: OverlayColor; baseBg?: OverlayColor } => {
+      if (opts.colors === 'neovim') {
+        return {
+          fg: st.defaultFg && opts.transparent?.fg ? { theme: 'editor.foreground' } : { rgb: st.fg },
+          bg: st.defaultBg && opts.transparent?.bg ? { theme: 'editor.background' } : { rgb: st.bg },
+          baseBg: { theme: 'editor.background' },
+        };
+      }
       const selected = st.bg !== baseBg;
-      const bg: OverlayColor = selected ? { theme: 'list.activeSelectionBackground' } : { theme: 'editorWidget.background' };
+      const bg: OverlayColor = { theme: selected ? palette.selectedBg : palette.bg };
       let fg: OverlayColor;
-      if (BOX_DRAWING.test(text)) fg = { theme: 'editorWidget.border' };
-      else if (st.fg === baseFg || st.fg === st.bg) fg = selected ? { theme: 'list.activeSelectionForeground' } : { theme: 'editorWidget.foreground' };
+      if (BOX_DRAWING.test(text)) fg = { theme: palette.border };
+      else if (st.fg === baseFg || st.fg === st.bg) fg = { theme: selected ? palette.selectedFg : palette.fg };
       else fg = { rgb: st.fg };
-      return { fg, bg };
+      return { fg, bg, baseBg: { theme: palette.bg } };
     };
 
     for (let r = rowStart; r < rowEnd; r++) {
