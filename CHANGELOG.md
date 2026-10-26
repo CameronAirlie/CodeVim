@@ -24,6 +24,10 @@ the next version.
   Neovim automatically (`codevim.ctrlKeys.fromNeovim`).
 - Floats look like the matching VS Code widget: Quick Open for pickers, its input box
   for prompts, IntelliSense for completion and which-key.
+- `codevim.languageFeatures` chooses who provides LSP and completion: `vscode`
+  (IntelliSense; Neovim's LSP clients and completion plugins stay out of your files,
+  and `vim.lsp.buf.*` / `vim.diagnostic.*` run VS Code commands) or `neovim` (your
+  Neovim LSP and completion plugin).
 - After an update, CodeVim offers these release notes
   (`codevim.updates.showReleaseNotes`, *CodeVim: What's New*).
 
@@ -34,5 +38,7 @@ the next version.
 - Floats drawn before CodeVim's features started (anything using highlights your
   colorscheme defined at startup) lost their colours.
 - Transparent colorschemes painted floats black.
+- `:w` wrote the file itself instead of saving through VS Code when the path went
+  through a symlink (e.g. macOS's `/var` → `/private/var`).
 
 [Unreleased]: https://github.com/CameronAirlie/CodeVim/commits/main

@@ -44,6 +44,9 @@ function M.setup(channel, opts, runtime_dir)
   if M.opts.notify then
     require('codevim.notify').setup()
   end
+  if M.opts.language_features == 'vscode' then
+    require('codevim.lsp').setup()
+  end
 
   local group = vim.api.nvim_create_augroup('codevim.init', { clear = true })
   vim.api.nvim_create_autocmd('VimEnter', {

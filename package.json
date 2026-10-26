@@ -223,6 +223,21 @@
             }
           }
         },
+        "codevim.languageFeatures": {
+          "type": "string",
+          "enum": [
+            "both",
+            "vscode",
+            "neovim"
+          ],
+          "default": "both",
+          "markdownDescription": "Who provides language features (LSP, completion, hover, go to definition, diagnostics) in your files. Restart Neovim after changing it.",
+          "markdownEnumDescriptions": [
+            "Both run: VS Code's language extensions and whatever your Neovim config sets up. `#codevim.insert.strategy#` decides who handles insert-mode typing.",
+            "VS Code only: IntelliSense, hover, rename, diagnostics… from VS Code's language extensions. Neovim's LSP clients don't attach to your files, completion plugins are turned off there, and `vim.lsp.buf.*` / `vim.diagnostic.*` (so `K`, `gd`, `grn`, `]d`…) run the VS Code commands. Insert-mode typing goes to VS Code.",
+            "Neovim only: your Neovim LSP and completion plugin (blink.cmp, nvim-cmp…). Insert-mode typing goes to Neovim, so VS Code's IntelliSense doesn't pop up."
+          ]
+        },
         "codevim.insert.strategy": {
           "type": "string",
           "enum": [
@@ -230,6 +245,7 @@
             "neovim"
           ],
           "default": "vscode",
+          "markdownDescription": "Who handles typing in insert mode. Only used when `#codevim.languageFeatures#` is `both`.",
           "markdownEnumDescriptions": [
             "VS Code handles typing in insert mode (IntelliSense, snippets, multi-cursor, IME). Changes are synced to Neovim and `.` repeat is preserved for plain typing.",
             "Experimental: every key goes to Neovim, including in insert mode (insert-mode mappings, abbreviations, Neovim completion)."

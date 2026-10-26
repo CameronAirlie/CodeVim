@@ -46,8 +46,10 @@ IntelliSense, the UI and saving. The two stay in sync in both directions.
   `.` repeat and one undo tree — not an emulation.
 - 💡 **VS Code typing in insert mode.** IntelliSense, snippets, auto-closing,
   multi-cursor and IME keep working, and plain typing still repeats with `.`.
-  Prefer Neovim's own completion (blink.cmp, nvim-cmp…)? Set
-  `codevim.insert.strategy` to `neovim`.
+- 🔀 **Pick your language features.** `codevim.languageFeatures` chooses who does
+  LSP and completion: `vscode` (IntelliSense; Neovim's LSP and completion plugins
+  step aside, and `K`, `gd`, `grn`, `]d` run VS Code commands) or `neovim` (your
+  Neovim LSP and blink.cmp / nvim-cmp).
 - 🪟 **Plugin UIs in your editor.** Telescope, which-key, Lazy, completion menus and
   hover popups are drawn over the editor in your VS Code theme. Help, Oil, fugitive
   and quickfix open as VS Code editors.
@@ -107,7 +109,8 @@ All settings live under `codevim.*`. The ones you are most likely to touch:
 | --- | --- | --- |
 | `codevim.neovimPath` | `nvim` | Neovim executable |
 | `codevim.neovimAppName` | `""` | `NVIM_APPNAME`, for a separate config |
-| `codevim.insert.strategy` | `vscode` | `vscode`: VS Code handles insert-mode typing. `neovim`: every key goes to Neovim (Neovim completion, insert mappings) |
+| `codevim.languageFeatures` | `both` | `vscode`: VS Code's LSP and IntelliSense only. `neovim`: your Neovim LSP and completion plugin only. `both`: leave both running |
+| `codevim.insert.strategy` | `vscode` | With `languageFeatures: both`, who handles insert-mode typing: `vscode`, or `neovim` (insert mappings, Neovim completion) |
 | `codevim.insert.escapeSequence` | `""` | Two keys that leave insert mode, e.g. `jk` |
 | `codevim.ctrlKeys.normal` / `.insert` / `.cmdline` | see Settings | Which `ctrl+<key>` combos go to Neovim; the rest keep their VS Code meaning |
 | `codevim.ctrlKeys.fromNeovim` | `true` | Also send any Ctrl key Neovim gives a meaning (built in or mapped) |

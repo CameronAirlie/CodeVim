@@ -1,16 +1,25 @@
 import * as path from 'path';
 import { nullLogger } from '../../src/core/logger';
-import { LuaEvents } from '../../src/nvim/protocol';
+import { LuaEvents, RuntimeSetupOptions } from '../../src/nvim/protocol';
 import { NvimSession } from '../../src/nvim/session';
 
 export const RUNTIME_DIR = path.resolve(__dirname, '../../runtime');
 
-export async function startSession(): Promise<NvimSession> {
+export async function startSession(setup: Partial<RuntimeSetupOptions> = {}): Promise<NvimSession> {
   return NvimSession.start({
     nvimPath: process.env.NVIM_PATH ?? 'nvim',
     nvimArgs: ['--clean', '-n'],
     runtimeDir: RUNTIME_DIR,
-    setup: { vscode_global: true, clipboard: true, notify: true, window_keymaps: true, command_abbreviations: true, virtualedit_block: true },
+    setup: {
+      vscode_global: true,
+      clipboard: true,
+      notify: true,
+      window_keymaps: true,
+      command_abbreviations: true,
+      virtualedit_block: true,
+      language_features: 'both',
+      ...setup,
+    },
     width: 80,
     height: 24,
     logger: nullLogger,

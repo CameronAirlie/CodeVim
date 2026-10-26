@@ -209,8 +209,28 @@ opens as an editor, and completion menus appear at the cursor. Load them again w
 }
 ```
 
-Plugins that need Neovim to handle typing in insert mode, such as blink.cmp or
-nvim-cmp, also need `codevim.insert.strategy: "neovim"`.
+Completion plugins such as blink.cmp or nvim-cmp also need Neovim to handle typing
+in insert mode: set `codevim.languageFeatures: "neovim"` (see below).
+
+### VS Code or Neovim language features
+
+`codevim.languageFeatures` decides who provides LSP features and completion in your
+files. Restart Neovim (*CodeVim: Restart Neovim*) after changing it.
+
+- **`vscode`**: VS Code's language extensions only. Typing in insert mode goes to
+  VS Code, so IntelliSense, snippets and parameter hints work as usual. In documents,
+  Neovim's LSP clients don't start or attach (plugin buffers are left alone),
+  completion plugins are turned off (blink.cmp, nvim-cmp, mini.completion), and
+  `vim.lsp.buf.*` and `vim.diagnostic.*` run the matching VS Code commands. Your own
+  LSP mappings and Neovim's defaults (`grn`, `gra`, `grr`, `gri`, `gO`, `]d`, `[d`)
+  keep working, and `K`, `gd` and `gD` are mapped to hover, definition and
+  declaration unless your config maps them already.
+- **`neovim`**: your Neovim LSP and completion plugin. Typing in insert mode goes to
+  Neovim, so VS Code's IntelliSense doesn't pop up. VS Code's language extensions
+  still show their diagnostics and hovers on mouse-over; disable them per language
+  if you don't want that.
+- **`both`** (default): nothing is turned off. `codevim.insert.strategy` decides who
+  handles insert-mode typing, and with `vscode` both completion menus can appear.
 
 **Drop vscode-neovim scrolling workarounds.** CodeVim keeps Neovim's window the same
 height as the visible editor, so built-in `<C-d>`, `<C-u>`, `<C-f>`, `<C-b>`, `H`,
@@ -240,7 +260,8 @@ ones:
 | `neovimPath`                                         | `nvim`            | Neovim executable                                                                        |
 | `neovimArgs` / `neovimAppName`                       | `[]` / `""`       | extra args / `NVIM_APPNAME` for a separate config                                        |
 | `setVscodeGlobal`                                    | `true`            | also set `vim.g.vscode` for vscode-neovim compatibility                                  |
-| `insert.strategy`                                    | `vscode`          | `neovim` (experimental) sends insert-mode keys to Neovim as well                         |
+| `languageFeatures`                                   | `both`            | `vscode` / `neovim`: who provides LSP and completion ([details](#vs-code-or-neovim-language-features)) |
+| `insert.strategy`                                    | `vscode`          | with `languageFeatures: both`, `neovim` (experimental) sends insert-mode keys to Neovim as well |
 | `insert.escapeSequence`                              | `""`              | e.g. `jk` to leave insert mode                                                           |
 | `insert.dotRepeat`                                   | `true`            | replay VS Code typing so `.` works                                                       |
 | `ctrlKeys.normal` / `.insert` / `.cmdline`           | see Settings      | which `ctrl+<key>` combos go to Neovim in each mode; the rest keep their VS Code meaning |

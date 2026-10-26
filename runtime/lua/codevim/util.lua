@@ -4,12 +4,20 @@ local M = {}
 local is_windows = vim.fn.has('win32') == 1
 local has_011 = vim.fn.has('nvim-0.11') == 1
 
---- Normalises a path for comparisons (slashes, and case on Windows).
+--- Normalises a path for comparisons (symlinks, slashes, and case on Windows).
+--- Symlinks matter: on macOS the temp dir /var/… is really /private/var/…, and a
+--- project opened through a symlink must still match its buffer.
 function M.normalize_path(path)
   if not path or path == '' then
     return ''
   end
-  local p = vim.fs.normalize(path)
+  local real = vim.uv.fs_realpath(path)
+  if not real then
+    -- Not on disk yet (a new file): resolve the folder it goes in.
+    local dir = vim.uv.fs_realpath(vim.fs.dirname(path))
+    real = dir and (dir .. '/' .. vim.fs.basename(path))
+  end
+  local p = vim.fs.normalize(real or path)
   if is_windows then
     p = p:lower()
   end

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Disposable } from './core/disposable';
 import { Emitter } from './core/events';
 import { ModeGroup } from './core/mode';
+import { LanguageFeatures } from './nvim/protocol';
 
 export type InsertStrategy = 'vscode' | 'neovim';
 export type CursorStyleName = 'block' | 'block-outline' | 'line' | 'line-thin' | 'underline' | 'underline-thin';
@@ -22,6 +23,8 @@ export interface CodeVimConfig {
   setVscodeGlobal: boolean;
   documentSchemes: string[];
   features: FeatureToggles;
+  languageFeatures: LanguageFeatures;
+  /** Effective strategy: `languageFeatures` "vscode"/"neovim" decides it, "both" leaves it to `insert.strategy`. */
   insertStrategy: InsertStrategy;
   insertEscapeSequence: string;
   insertEscapeTimeout: number;
@@ -63,6 +66,7 @@ export const DEFAULT_STATUSLINE_COLORS: Record<StatuslineModeGroup, string> = {
 
 function read(): CodeVimConfig {
   const c = vscode.workspace.getConfiguration('codevim');
+  const languageFeatures = c.get<LanguageFeatures>('languageFeatures', 'both');
   return {
     neovimPath: c.get('neovimPath', 'nvim') || 'nvim',
     neovimArgs: c.get('neovimArgs', []),
@@ -70,7 +74,9 @@ function read(): CodeVimConfig {
     setVscodeGlobal: c.get('setVscodeGlobal', true),
     documentSchemes: c.get('documentSchemes', ['file', 'untitled', 'vscode-userdata', 'vscode-remote']),
     features: c.get('features', {}),
-    insertStrategy: c.get('insert.strategy', 'vscode'),
+    languageFeatures,
+    // IntelliSense needs VS Code to see the typing, Neovim completion needs Neovim to.
+    insertStrategy: languageFeatures === 'both' ? c.get('insert.strategy', 'vscode') : languageFeatures,
     insertEscapeSequence: c.get('insert.escapeSequence', ''),
     insertEscapeTimeout: c.get('insert.escapeSequenceTimeout', 300),
     dotRepeat: c.get('insert.dotRepeat', true),

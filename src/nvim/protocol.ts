@@ -160,6 +160,9 @@ export interface LuaRequests {
 }
 
 /** Options passed to `require('codevim').setup()`. */
+/** Which side provides LSP features and completion in documents. */
+export type LanguageFeatures = 'vscode' | 'neovim' | 'both';
+
 export interface RuntimeSetupOptions {
   vscode_global: boolean;
   clipboard: boolean;
@@ -168,6 +171,8 @@ export interface RuntimeSetupOptions {
   command_abbreviations: boolean;
   /** Set 'virtualedit' to "block" unless your config sets 'virtualedit' itself. */
   virtualedit_block: boolean;
+  /** `codevim.languageFeatures`: "vscode" keeps Neovim's LSP and completion out of documents. */
+  language_features: LanguageFeatures;
 }
 
 export interface BufLinesEvent {

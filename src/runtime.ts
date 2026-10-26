@@ -48,6 +48,7 @@ export class Runtime implements vscode.Disposable {
         window_keymaps: cfg.windowKeymaps,
         command_abbreviations: cfg.commandAbbreviations,
         virtualedit_block: cfg.visualBlockPastLineEnd,
+        language_features: cfg.languageFeatures,
       },
       width: cfg.uiWidth,
       height: 40,
