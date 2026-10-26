@@ -5,6 +5,7 @@ import { Logger } from './core/logger';
 import { runHealthChecks } from './health';
 import { renderHealthReport } from './health/report';
 import { HealthReportView } from './health/view';
+import { announceUpdate, showReleaseNotes } from './releaseNotes';
 import { Runtime } from './runtime';
 
 const MAX_RESTARTS = 3;
@@ -123,6 +124,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codevim.showLog', () => channel.show(true)),
+    vscode.commands.registerCommand('codevim.showReleaseNotes', () => showReleaseNotes(context)),
     vscode.commands.registerCommand('codevim.restart', () => controller.restart()),
     vscode.commands.registerCommand('codevim.resync', () => controller.resync()),
     vscode.commands.registerCommand('codevim.checkHealth', async () => {
@@ -150,6 +152,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Not awaited: your Neovim config may take a moment to load.
     void controller.start();
   }
+  void announceUpdate(context, config);
 }
 
 export function deactivate(): void {

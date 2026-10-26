@@ -2,7 +2,23 @@
   "name": "CameronAirlie-codevim",
   "displayName": "Neovim in VS Code",
   "icon": "media/codevim-logo.png",
-  "description": "Embed your real Neovim (and your config) inside VS Code, with seamless navigation between the two.",
+  "description": "Run your real Neovim — your init.lua, mappings and plugins — as the editor inside VS Code. Telescope, which-key and completion menus drawn in your theme, one undo tree, one jumplist.",
+  "preview": true,
+  "author": {
+    "name": "Cameron Airlie"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CameronAirlie/CodeVim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CameronAirlie/CodeVim/issues"
+  },
+  "homepage": "https://github.com/CameronAirlie/CodeVim#readme",
+  "galleryBanner": {
+    "color": "#1b1f24",
+    "theme": "dark"
+  },
   "version": "0.1.0",
   "publisher": "CameronAirlie",
   "license": "MIT",
@@ -17,7 +33,14 @@
     "vim",
     "neovim",
     "nvim",
-    "modal"
+    "vi",
+    "modal",
+    "keybindings",
+    "init.lua",
+    "lua",
+    "telescope",
+    "which-key",
+    "vscode-neovim"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -30,7 +53,8 @@
     "gen:keybindings": "node scripts/gen-keybindings.mjs",
     "test": "vitest run",
     "test:e2e": "npm run build && node test/e2e/run.mjs",
-    "package": "node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --skip-license"
+    "package": "node esbuild.mjs --production && vsce package --no-dependencies",
+    "release": "node scripts/release.mjs"
   },
   "contributes": {
     "commands": [
@@ -87,6 +111,11 @@
       {
         "command": "codevim.redo",
         "title": "Redo (Neovim)",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.showReleaseNotes",
+        "title": "What's New",
         "category": "CodeVim"
       }
     ],
@@ -593,6 +622,11 @@
             "ctrl+tab"
           ],
           "markdownDescription": "Keys the surface leaves to VS Code instead of sending to Neovim (format: `ctrl+shift+p`)."
+        },
+        "codevim.updates.showReleaseNotes": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "After an update with new features, offer the release notes (also available as *CodeVim: What's New*)."
         }
       }
     },

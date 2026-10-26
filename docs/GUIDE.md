@@ -13,23 +13,27 @@ and how to change or extend it.
 
 Requirements: **Neovim 0.10+** on your `PATH` (0.11 recommended) and VS Code 1.90+.
 
-1. **Disable vscode-neovim** (or any other Vim extension). Only one extension can own
-   VS Code's `type` command, so two Vim extensions conflict.
-2. Install the packaged extension:
+1. **Disable other Vim extensions** (VSCodeVim, VSCode Neovim). Only one extension can
+   own VS Code's `type` command, so two Vim extensions conflict.
+2. Install **Neovim in VS Code** from the Extensions view (search for "CodeVim"), or
+   from the command line:
 
-   ```powershell
-   code --install-extension C:\Users\cam\dev\CodeVim\codevim-0.1.0.vsix
+   ```sh
+   code --install-extension CameronAirlie.CameronAirlie-codevim
    ```
 
-   Or use *Extensions view → … → Install from VSIX…*.
 3. Reload VS Code. The status bar shows `-- NORMAL --`, and the log is under
    *Output → CodeVim*.
 
-To rebuild from source:
+If `nvim` isn't on your `PATH`, set `codevim.neovimPath` to the executable. If
+anything goes wrong, run *CodeVim: Check Health*.
 
-```powershell
+To build and install from source instead:
+
+```sh
 npm install
-npm run package          # builds and writes codevim-<version>.vsix
+npm run package          # builds and writes CameronAirlie-codevim-<version>.vsix
+code --install-extension CameronAirlie-codevim-<version>.vsix
 ```
 
 For development, open the folder in VS Code and press `F5`. That starts an Extension
@@ -37,14 +41,14 @@ Development Host with CodeVim loaded. Run `npm run watch` to rebuild on save.
 
 ### Your existing config just works
 
-CodeVim sets **both** `vim.g.codevim` and `vim.g.vscode`, and it provides a
-`require('vscode')` module with the same API as vscode-neovim. Your `init.lua`
-already branches on `vim.g.vscode`, so it loads `plugins_vscode` and
-`vscode_status.lua` unchanged. This was checked by running the test suite against
-your config.
+CodeVim loads your normal Neovim config. It sets **both** `vim.g.codevim` and
+`vim.g.vscode`, and it provides a `require('vscode')` module with the same API as
+vscode-neovim. A config that already branches on `vim.g.vscode` for vscode-neovim
+takes the same branch under CodeVim, and its `require('vscode')` calls keep working.
+Calls to other extensions' commands work as long as those extensions are installed.
 
-Your `vscode_status.lua` mode hooks call `neovim-ui-indicator.*` commands. Those keep
-working as long as that extension is installed.
+Set `codevim.setVscodeGlobal` to `false` if you'd rather your config saw CodeVim as
+plain Neovim (only `vim.g.codevim` is set then).
 
 ---
 
@@ -100,10 +104,9 @@ Both sides stay pointed at the same file:
 - **VS Code → Neovim:** focusing any editor (tab click, `Ctrl+P`, Go to Definition,
   Explorer) makes that buffer current in Neovim. Each switch records a jump, so
   **`<C-o>` / `<C-i>` walk back and forth across editors**.
-- **Neovim → VS Code:** `:e file`, `:b`, `:bnext`, `<C-^>` (your `<leader><leader>`),
-  `gf`, `<C-o>`, Telescope and Oil picks open the file in a VS Code editor.
-  `:enew` (your `<leader>n`) opens a new untitled VS Code document. `:bd` closes
-  the editor.
+- **Neovim → VS Code:** `:e file`, `:b`, `:bnext`, `<C-^>`, `gf`, `<C-o>`, and
+  picks from Telescope, Oil and similar plugins open the file in a VS Code editor.
+  `:enew` opens a new untitled VS Code document. `:bd` closes the editor.
 - **Windows → editor groups:**
 
 | Neovim                             | VS Code                                      |
@@ -150,8 +153,6 @@ Colours follow the VS Code theme (`codevim.floats.colors: "vscode"`):
 With `"neovim"`, Neovim's own colours are used; a transparent colorscheme's floats
 take the editor background.
 
-Set `"neovim"` to use your Neovim colourscheme instead.
-
 **Plugin buffers** (`:help`, Oil, fugitive `:Git`, vim-flog, quickfix,
 `:terminal`) open as **ordinary VS Code editors** with your theme and font. If Neovim
 opened them in a split (`:help`, `:Git`, `:copen`) they go beside the current editor;
@@ -186,34 +187,35 @@ vscode.get_config('editor.tabSize'); vscode.update_config('editor.tabSize', 2)
 Also available:
 
 - `vim.notify()` shows VS Code notifications (`codevim.notifications.routeVimNotify`).
-- The `+` and `*` registers use VS Code'
-- s clipboard, so your `<leader>y` / `<leader>p`
-  work without win32yank (`codevim.clipboard.useVscode`).
+- The `+` and `*` registers use VS Code's clipboard, so `"+y`, `"+p` and
+  `clipboard=unnamedplus` work without a clipboard tool such as win32yank or xclip
+  (`codevim.clipboard.useVscode`).
 - `vim.g.codevim == 1` or `require('codevim').active()` tells your config it is
   running inside CodeVim.
 
 ### Making the most of your config
 
-Telescope and Oil only live in `plugins_nvim`. To use them inside VS Code (Telescope
-draws over the editor, Oil opens as an editor), load them when running under CodeVim. In
-`lua/config/lazy.lua`:
+**Re-enable plugins you turned off for vscode-neovim.** vscode-neovim can't show
+plugin UIs, so configs often skip pickers, file explorers and completion plugins when
+`vim.g.vscode` is set. CodeVim can show them: Telescope draws over the editor, Oil
+opens as an editor, and completion menus appear at the cursor. Load them again when
+`vim.g.codevim` is set, for example with lazy.nvim:
 
 ```lua
-local spec = { { import = vim.g.vscode and 'plugins_vscode' or 'plugins_nvim' } }
-if vim.g.codevim then
-  -- CodeVim can display plugin UIs, so add the navigation plugins.
-  table.insert(spec, { import = 'plugins_nvim.navigation' })
-end
-require('lazy').setup({ spec = spec, --[[ rest unchanged ]] })
+{
+  'nvim-telescope/telescope.nvim',
+  -- was: cond = not vim.g.vscode
+  cond = not vim.g.vscode or vim.g.codevim,
+}
 ```
 
-(For `import = 'plugins_nvim.navigation'` to work, `navigation.lua` must return a
-spec list, which it already does.)
+Plugins that need Neovim to handle typing in insert mode, such as blink.cmp or
+nvim-cmp, also need `codevim.insert.strategy: "neovim"`.
 
-CodeVim keeps Neovim's window the same height as the visible editor. Built-in
-`<C-d>`, `<C-u>`, `<C-f>`, `<C-b>`, `H`, `M` and `L` therefore already behave
-correctly, and the `visibleRanges` workarounds in `vscode_status.lua` are optional
-under CodeVim:
+**Drop vscode-neovim scrolling workarounds.** CodeVim keeps Neovim's window the same
+height as the visible editor, so built-in `<C-d>`, `<C-u>`, `<C-f>`, `<C-b>`, `H`,
+`M` and `L` already behave correctly. Mappings that work around this for
+vscode-neovim can be skipped under CodeVim:
 
 ```lua
 if vim.g.vscode and not vim.g.codevim then
@@ -222,7 +224,8 @@ end
 ```
 
 To give VS Code its own Neovim config instead, set `codevim.neovimAppName` (for
-example `nvim-vscode`, which reads `~/AppData/Local/nvim-vscode`) or pass
+example `nvim-vscode`, which reads `~/.config/nvim-vscode`, or
+`%LOCALAPPDATA%\nvim-vscode` on Windows) or pass
 `["-u", "path/to/init.lua"]` in `codevim.neovimArgs`.
 
 ---
@@ -257,16 +260,24 @@ ones:
 | `visualBlock.pastLineEnd`                            | `true`            | `<C-v>` blocks can extend past short lines (`virtualedit=block` if your config sets none) |
 | `statusline.position`                                | `statusBar`       | mode/cmdline/messages in VS Code's status bar, or `editor` for a Vim-style line          |
 | `statusline.colors`                                  | ANSI theme colors | per-mode colour of the mode indicator (status bar text, or the in-editor line)           |
+| `updates.showReleaseNotes`                           | `true`            | offer the release notes after an update with new features                                |
 
-**Ctrl keys.** By default normal mode sends `ctrl+a b d e f i o r u v w x y ] 6 [`
-to Neovim. `ctrl+p`, `ctrl+s`, `ctrl+c` and the others stay with VS Code. Add a
-letter to `codevim.ctrlKeys.normal` to give that key to Neovim. `ctrl+r` is not in
-the insert list by default, because waiting for a register name doesn't fit
-VS Code-handled typing.
+**Ctrl keys.** In normal and visual mode, `ctrl+a b d e f i o r u v w x y ] 6 [` go
+to Neovim by default; `ctrl+p`, `ctrl+s`, `ctrl+c` and the others keep their VS Code
+meaning. Add a letter to `codevim.ctrlKeys.normal` to give that key to Neovim.
+
+In insert mode, `ctrl+c w u o t d [` go to Neovim (`ctrl+c` leaves insert mode like
+`<Esc>`). With `insert.strategy: "neovim"`, every Ctrl key Neovim gives a meaning in
+insert mode goes to it as well: built-in commands such as `<C-r>`, `<C-x>`, `<C-v>`
+and `<C-n>`, and anything your config or plugins map there (a completion menu's
+`<C-y>`, for example). Keys Vim leaves unused, such as `ctrl+s` and `ctrl+b`, keep
+their VS Code meaning unless something maps them. The command line works the same
+way in both strategies. Turn this off with `codevim.ctrlKeys.fromNeovim: false`.
 
 **Commands** (Command Palette, "CodeVim:"): *Restart Neovim*, *Toggle* (also
 `ctrl+shift+alt+n`), *Resync all documents*, *Show Log*, *Show Neovim Messages*,
-*Show Neovim Surface*, *Check Health*, *Jump Back* / *Jump Forward*, *Undo* / *Redo*.
+*Show Neovim Surface*, *Check Health*, *Jump Back* / *Jump Forward*, *Undo* / *Redo*,
+*What's New*.
 
 **Startup and health.** While Neovim starts, the status bar shows what it is doing
 ("loading your config"…). *CodeVim: Check Health* checks the Neovim executable and
@@ -465,7 +476,22 @@ If you run the e2e suite from VS Code's integrated terminal, clear
 
 **Debugging:** *CodeVim: Show Log*. Set the channel's log level to *Trace* (gear icon
 in the Output view) to see every Lua event. Setting the environment variable
-`CODEVIM_LOG_FILE=C:\path\codevim.log` also mirrors the log to a file.
+`CODEVIM_LOG_FILE=/path/to/codevim.log` also mirrors the log to a file.
+
+### Releasing
+
+1. As you work, add user-facing changes under `## [Unreleased]` in `CHANGELOG.md`
+   (*Added*, *Changed*, *Fixed*, *Removed*).
+2. `npm run release -- patch` (or `minor`, `major`, or an exact `x.y.z`; add
+   `--dry-run` to preview). It moves the Unreleased notes under the new version,
+   bumps `package.json`, commits and tags `vX.Y.Z`.
+3. `git push --follow-tags`. The *Release* workflow tests and packages the extension,
+   publishes it to the Marketplace (repository secret `VSCE_PAT`) and Open VSX
+   (`OVSX_PAT`, optional), and creates a GitHub release with the `.vsix` and notes.
+
+Users get the update through VS Code's normal extension updates. When the major or
+minor version changes, CodeVim offers the release notes once
+(`codevim.updates.showReleaseNotes`); *CodeVim: What's New* opens them any time.
 
 ---
 

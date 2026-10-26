@@ -38,6 +38,7 @@ export interface CodeVimConfig {
   syncScroll: boolean;
   syncIndentOptions: boolean;
   uiWidth: number;
+  showReleaseNotes: boolean;
   statusline: { position: StatuslinePosition; colors: Record<StatuslineModeGroup, string> };
   cursorStyle: Record<'normal' | 'insert' | 'visual' | 'replace' | 'operator' | 'cmdline', CursorStyleName>;
   surface: {
@@ -97,6 +98,7 @@ function read(): CodeVimConfig {
     syncScroll: c.get('viewport.syncScroll', true),
     syncIndentOptions: c.get('syncIndentOptions', true),
     uiWidth: c.get('uiWidth', 120),
+    showReleaseNotes: c.get('updates.showReleaseNotes', true),
     statusline: {
       position: c.get('statusline.position', 'statusBar'),
       colors: { ...DEFAULT_STATUSLINE_COLORS, ...c.get<Partial<Record<StatuslineModeGroup, string>>>('statusline.colors', {}) },

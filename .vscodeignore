@@ -4,6 +4,7 @@
 !media/**
 !package.json
 !README.md
+!CHANGELOG.md
 !LICENSE
 !docs/**
 dist/**/*.map
