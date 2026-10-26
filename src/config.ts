@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Disposable } from './core/disposable';
 import { Emitter } from './core/events';
+import { ModeGroup } from './core/mode';
 
 export type InsertStrategy = 'vscode' | 'neovim';
 export type CursorStyleName = 'block' | 'block-outline' | 'line' | 'line-thin' | 'underline' | 'underline-thin';
@@ -8,7 +9,7 @@ export type UnfocusedFloats = 'none' | 'focusable' | 'all';
 export type FloatDisplay = 'overlay' | 'surface' | 'none';
 export type PluginBufferDisplay = 'editor' | 'surface';
 export type StatuslinePosition = 'editor' | 'statusBar';
-export type StatuslineModeGroup = 'normal' | 'insert' | 'visual' | 'replace' | 'operator' | 'cmdline' | 'terminal';
+export type StatuslineModeGroup = ModeGroup;
 
 export interface FeatureToggles {
   [id: string]: boolean;
@@ -32,6 +33,7 @@ export interface CodeVimConfig {
   routeVimNotify: boolean;
   windowKeymaps: boolean;
   commandAbbreviations: boolean;
+  visualBlockPastLineEnd: boolean;
   errorsAsNotifications: boolean;
   syncScroll: boolean;
   syncIndentOptions: boolean;
@@ -89,21 +91,22 @@ function read(): CodeVimConfig {
     routeVimNotify: c.get('notifications.routeVimNotify', true),
     windowKeymaps: c.get('navigation.windowKeymaps', true),
     commandAbbreviations: c.get('navigation.commandAbbreviations', true),
+    visualBlockPastLineEnd: c.get('visualBlock.pastLineEnd', true),
     errorsAsNotifications: c.get('messages.errorsAsNotifications', false),
     syncScroll: c.get('viewport.syncScroll', true),
     syncIndentOptions: c.get('syncIndentOptions', true),
     uiWidth: c.get('uiWidth', 120),
     statusline: {
-      position: c.get('statusline.position', 'editor'),
+      position: c.get('statusline.position', 'statusBar'),
       colors: { ...DEFAULT_STATUSLINE_COLORS, ...c.get<Partial<Record<StatuslineModeGroup, string>>>('statusline.colors', {}) },
     },
     cursorStyle: {
       normal: c.get('cursorStyle.normal', 'block'),
       insert: c.get('cursorStyle.insert', 'line'),
-      visual: c.get('cursorStyle.visual', 'line-thin'),
-      replace: c.get('cursorStyle.replace', 'underline'),
-      operator: c.get('cursorStyle.operator', 'underline'),
-      cmdline: c.get('cursorStyle.cmdline', 'block-outline'),
+      visual: c.get('cursorStyle.visual', 'block'),
+      replace: c.get('cursorStyle.replace', 'line'),
+      operator: c.get('cursorStyle.operator', 'block'),
+      cmdline: c.get('cursorStyle.cmdline', 'block'),
     },
     surface: {
       viewColumn: c.get('surface.viewColumn', 'active'),

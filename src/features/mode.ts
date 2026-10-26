@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { CursorStyleName } from '../config';
 import { DisposableStore } from '../core/disposable';
-import { Mode, MODE_LABELS } from '../core/mode';
+import { Mode, MODE_LABELS, modeGroup } from '../core/mode';
 import { FeatureContext, FeatureDefinition } from './feature';
 
 const CURSOR_STYLES: Record<CursorStyleName, vscode.TextEditorCursorStyle> = {
@@ -53,10 +53,17 @@ class ModeFeature implements vscode.Disposable {
     }
   }
 
+  /** `codevim.statusline.colors`: a hex colour or a theme colour id per mode. */
+  private colorFor(mode: Mode): string | vscode.ThemeColor {
+    const value = this.ctx.config.current.statusline.colors[modeGroup(mode)];
+    return value.startsWith('#') ? value : new vscode.ThemeColor(value);
+  }
+
   private render(mode: Mode): void {
     const kindKey = mode.kind;
     void vscode.commands.executeCommand('setContext', 'codevim.mode', kindKey);
     this.item.text = `-- ${MODE_LABELS[mode.kind]} --`;
+    this.item.color = this.colorFor(mode);
     if (this.ctx.config.statuslineInEditor) this.item.hide();
     else this.item.show();
     const style = this.styleFor(mode);

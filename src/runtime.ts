@@ -19,13 +19,21 @@ export class Runtime implements vscode.Disposable {
   private readonly exitEmitter = new Emitter<number | null>();
   /** Fires when Neovim exits unexpectedly. */
   readonly onDidCrash = this.exitEmitter.event;
+  /** How long startup took, including your config. */
+  startupMs = 0;
 
   private constructor(
     readonly session: NvimSession,
     readonly documents: DocumentManager,
   ) {}
 
-  static async start(extension: vscode.ExtensionContext, config: ConfigService, logger: Logger): Promise<Runtime> {
+  static async start(
+    extension: vscode.ExtensionContext,
+    config: ConfigService,
+    logger: Logger,
+    onProgress?: (stage: string) => void,
+  ): Promise<Runtime> {
+    const startedAt = Date.now();
     const cfg = config.current;
     const session = await NvimSession.start({
       nvimPath: cfg.neovimPath,
@@ -39,11 +47,14 @@ export class Runtime implements vscode.Disposable {
         notify: cfg.routeVimNotify,
         window_keymaps: cfg.windowKeymaps,
         command_abbreviations: cfg.commandAbbreviations,
+        virtualedit_block: cfg.visualBlockPastLineEnd,
       },
       width: cfg.uiWidth,
       height: 40,
       logger: scopedLogger(logger, 'nvim'),
+      onProgress,
     });
+    onProgress?.('starting features');
 
     const documents = new DocumentManager(session, config, logger);
     const runtime = new Runtime(session, documents);
@@ -69,6 +80,7 @@ export class Runtime implements vscode.Disposable {
         logger.error(`feature '${feature.id}' failed to start: ${String(err)}`);
       }
     }
+    runtime.startupMs = Date.now() - startedAt;
     return runtime;
   }
 

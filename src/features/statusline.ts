@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import { StatuslineModeGroup } from '../config';
 import { DisposableStore } from '../core/disposable';
-import { Mode, MODE_LABELS } from '../core/mode';
+import { Mode, MODE_LABELS, modeGroup } from '../core/mode';
 import { chunksToText } from '../nvim/redraw';
 import { emptyCmdline, formatCmdline, reduceCmdline } from './cmdlineState';
 import { contentText, lineHeightPx, themeVar } from './editorOverlay';
@@ -20,17 +19,6 @@ interface Segment {
   fg?: string;
   bg?: string;
   bold?: boolean;
-}
-
-function modeGroup(mode: Mode): StatuslineModeGroup {
-  switch (mode.kind) {
-    case 'visualLine':
-    case 'visualBlock':
-    case 'select':
-      return 'visual';
-    default:
-      return mode.kind;
-  }
 }
 
 /** A setting value: a hex colour, or a theme colour id. */

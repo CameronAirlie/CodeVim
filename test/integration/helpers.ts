@@ -10,7 +10,7 @@ export async function startSession(): Promise<NvimSession> {
     nvimPath: process.env.NVIM_PATH ?? 'nvim',
     nvimArgs: ['--clean', '-n'],
     runtimeDir: RUNTIME_DIR,
-    setup: { vscode_global: true, clipboard: true, notify: true, window_keymaps: true, command_abbreviations: true },
+    setup: { vscode_global: true, clipboard: true, notify: true, window_keymaps: true, command_abbreviations: true, virtualedit_block: true },
     width: 80,
     height: 24,
     logger: nullLogger,

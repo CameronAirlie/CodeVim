@@ -66,7 +66,13 @@ function M.is_float(win)
   return vim.api.nvim_win_get_config(win or 0).relative ~= ''
 end
 
-local visual_modes = { v = true, V = true, ['\22'] = true }
+--- The buffer mirrors a real VS Code document (not a plugin buffer shown as an editor).
+function M.is_document(buf)
+  buf = buf or vim.api.nvim_get_current_buf()
+  return vim.b[buf].codevim_uri ~= nil and not vim.b[buf].codevim_foreign
+end
+
+local visual_modes ={ v = true, V = true, ['\22'] = true }
 
 function M.is_visual(mode)
   return visual_modes[mode:sub(1, 1)] == true

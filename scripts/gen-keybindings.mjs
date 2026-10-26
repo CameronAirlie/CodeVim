@@ -56,6 +56,28 @@ const keybindings = [
     key: 'ctrl+shift+alt+n',
     command: 'codevim.toggle',
   },
+  // Go Back / Go Forward walk Neovim's jumplist (VS Code's default keys per platform).
+  ...[
+    ['codevim.jumpBack', { win: 'alt+left', linux: 'ctrl+alt+-', mac: 'ctrl+-' }],
+    ['codevim.jumpForward', { win: 'alt+right', linux: 'ctrl+shift+-', mac: 'ctrl+shift+-' }],
+  ].map(([command, keys]) => ({
+    key: keys.win,
+    ...keys,
+    command,
+    when: `${ACTIVE} && codevim.jumplist && codevim.mode == 'normal'`,
+  })),
+  // Undo / redo through Neovim's undo tree outside insert mode. A ctrl key given to
+  // Neovim in `codevim.ctrlKeys` (e.g. ctrl+y to scroll) keeps that meaning.
+  ...[
+    ['codevim.undo', 'ctrl+z', 'cmd+z', `!('z' in codevim.ctrlKeys)`],
+    ['codevim.redo', 'ctrl+shift+z', 'cmd+shift+z', null],
+    ['codevim.redo', 'ctrl+y', null, `!('y' in codevim.ctrlKeys) && !isMac`],
+  ].map(([command, key, mac, extra]) => ({
+    key,
+    ...(mac ? { mac } : {}),
+    command,
+    when: `${ACTIVE} && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline'${extra ? ` && ${extra}` : ''}`,
+  })),
 ];
 
 const pkgPath = new URL('../package.json', import.meta.url);

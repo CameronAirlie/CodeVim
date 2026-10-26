@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { ConfigService } from './config';
 import { Logger } from './core/logger';
+import { runHealthChecks } from './health';
+import { renderHealthReport } from './health/report';
+import { HealthReportView } from './health/view';
 import { Runtime } from './runtime';
 
 const MAX_RESTARTS = 3;
@@ -26,6 +29,8 @@ class Controller implements vscode.Disposable {
   private runtime: Runtime | undefined;
   private starting: Promise<void> | undefined;
   private crashes: number[] = [];
+  /** Why the last start failed (reported by "Check Health"). */
+  private lastError: string | undefined;
 
   constructor(
     private readonly extension: vscode.ExtensionContext,
@@ -37,19 +42,33 @@ class Controller implements vscode.Disposable {
     return this.extension.globalState.get('codevim.enabled', true);
   }
 
+  get current(): Runtime | undefined {
+    return this.runtime;
+  }
+
+  get startError(): string | undefined {
+    return this.lastError;
+  }
+
   async start(): Promise<void> {
     if (this.runtime || this.starting) return this.starting;
     this.starting = (async () => {
       try {
-        const runtime = await Runtime.start(this.extension, this.config, this.logger);
+        // Your config can take a while to load; show progress in the status bar meanwhile.
+        const runtime = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'CodeVim' }, (progress) =>
+          Runtime.start(this.extension, this.config, this.logger, (stage) => progress.report({ message: stage })),
+        );
         this.runtime = runtime;
+        this.lastError = undefined;
         runtime.onDidCrash((code) => void this.onCrash(code));
         void vscode.commands.executeCommand('setContext', 'codevim.running', true);
         this.logger.info('CodeVim started');
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        this.lastError = message;
         this.logger.error(`start failed: ${message}`);
-        const choice = await vscode.window.showErrorMessage(`CodeVim: ${message}`, 'Open Settings', 'Show Log');
+        const choice = await vscode.window.showErrorMessage(`CodeVim: ${message}`, 'Check Health', 'Open Settings', 'Show Log');
+        if (choice === 'Check Health') void vscode.commands.executeCommand('codevim.checkHealth');
         if (choice === 'Open Settings') void vscode.commands.executeCommand('workbench.action.openSettings', 'codevim.neovimPath');
         if (choice === 'Show Log') void vscode.commands.executeCommand('codevim.showLog');
       } finally {
@@ -99,12 +118,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const logger = channelLogger(channel);
   const config = new ConfigService();
   const controller = new Controller(context, config, logger);
-  context.subscriptions.push(channel, config, controller);
+  const healthView = new HealthReportView();
+  context.subscriptions.push(channel, config, controller, healthView);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codevim.showLog', () => channel.show(true)),
     vscode.commands.registerCommand('codevim.restart', () => controller.restart()),
     vscode.commands.registerCommand('codevim.resync', () => controller.resync()),
+    vscode.commands.registerCommand('codevim.checkHealth', async () => {
+      const sections = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'CodeVim: checking health' }, () =>
+        runHealthChecks({ config, enabled: controller.enabled, runtime: controller.current, startError: controller.startError }),
+      );
+      await healthView.show(renderHealthReport(sections));
+    }),
     vscode.commands.registerCommand('codevim.toggle', async () => {
       const enable = !controller.enabled;
       await context.globalState.update('codevim.enabled', enable);

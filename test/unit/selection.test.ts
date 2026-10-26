@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseMode } from '../../src/core/mode';
-import { cursorToSelections } from '../../src/sync/selection';
+import { blockOverhangs, cursorToSelections } from '../../src/sync/selection';
 
 const doc = ['hello world', 'second line', 'third'];
 const sel = (p: Parameters<typeof cursorToSelections>[0]) => cursorToSelections(p, (l) => doc[l], doc.length);
@@ -53,5 +53,16 @@ describe('parseMode', () => {
     ['nt', 'normal'],
   ])('%j → %s', (raw, kind) => {
     expect(parseMode(raw).kind).toBe(kind);
+  });
+});
+
+describe('blockOverhangs', () => {
+  it('lists the cells past each line end, with the cursor cell', () => {
+    const p = { buf: 1, line: 1, col: 2, mode: '', past_eol: 4, block: [[0, 3, 6, 0, 0], [1, 2, 2, 1, 3], [2, 3, 6]] as [number, number, number, number?, number?][] };
+    expect(blockOverhangs(p)).toEqual([{ line: 1, gap: 1, width: 3, cursor: 3 }]);
+  });
+
+  it('is empty outside blockwise visual mode', () => {
+    expect(blockOverhangs({ buf: 1, line: 0, col: 0, mode: 'v', block: [[0, 0, 0, 1, 2]] })).toEqual([]);
   });
 });

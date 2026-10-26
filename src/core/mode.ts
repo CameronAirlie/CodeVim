@@ -26,6 +26,20 @@ export const MODE_LABELS: Record<ModeKind, string> = {
   terminal: 'TERMINAL',
 };
 
+/** Modes that share a colour: the visual variants and select mode count as visual. */
+export type ModeGroup = 'normal' | 'insert' | 'visual' | 'replace' | 'operator' | 'cmdline' | 'terminal';
+
+export function modeGroup(mode: Mode): ModeGroup {
+  switch (mode.kind) {
+    case 'visualLine':
+    case 'visualBlock':
+    case 'select':
+      return 'visual';
+    default:
+      return mode.kind;
+  }
+}
+
 export interface Mode {
   /** Raw mode string from `nvim_get_mode()` / ModeChanged, e.g. "n", "no", "niI", "V". */
   readonly raw: string;

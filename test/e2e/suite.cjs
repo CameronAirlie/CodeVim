@@ -194,6 +194,60 @@ async function run() {
     await vscode.commands.executeCommand('workbench.action.joinAllGroups');
   });
 
+  const folded = () => editor().visibleRanges.length > 1;
+
+  await test('zc/zo fold in VS Code and j steps over the fold', async () => {
+    await openFile('fold.txt', 'head\n  a\n  b\n  c\ntail\n');
+    await type('zc');
+    await until('folded', folded);
+    await type('j');
+    await until('j skips the fold', () => editor().selection.active.line === 4);
+    assert.ok(folded(), 'the fold stays closed');
+    await type('kzo');
+    await until('unfolded', () => !folded());
+    await type('zMzR');
+    await until('zR opens all', () => !folded());
+  });
+
+  await test('ctrl+z / Edit > Undo / Redo go through Neovim', async () => {
+    await openFile('undo.txt', 'one\ntwo\nthree\n');
+    await type('dd');
+    await until('dd', () => text() === 'two\nthree\n');
+    await vscode.commands.executeCommand('codevim.undo');
+    await until('codevim.undo', () => text() === 'one\ntwo\nthree\n');
+    await type('jdd');
+    await until('second dd', () => text() === 'one\nthree\n');
+    await vscode.commands.executeCommand('undo'); // what the Edit menu runs
+    await until('Edit > Undo', () => text() === 'one\ntwo\nthree\n');
+    await vscode.commands.executeCommand('redo');
+    await until('Edit > Redo', () => text() === 'one\nthree\n');
+    // Neovim agrees with the document: undoing in Neovim again restores the line.
+    await type('u');
+    await until('Neovim undo after menu redo', () => text() === 'one\ntwo\nthree\n');
+  });
+
+  await test("Go Back walks Neovim's jumplist, including VS Code jumps", async () => {
+    await openFile('jumps.txt', Array.from({ length: 40 }, (_, i) => `line ${i}`).join('\n') + '\n');
+    await type('G');
+    await until('G', () => editor().selection.active.line === 40);
+    await vscode.commands.executeCommand('codevim.jumpBack');
+    await until('back to the top', () => editor().selection.active.line === 0);
+    editor().selection = new vscode.Selection(25, 0, 25, 0); // a jump made by VS Code
+    await sleep(200);
+    await vscode.commands.executeCommand('codevim.jumpBack');
+    await until('back to before the VS Code jump', () => editor().selection.active.line === 0);
+  });
+
+  await test('Check Health reports the running Neovim', async () => {
+    await vscode.commands.executeCommand('codevim.checkHealth');
+    const report = await vscode.workspace.openTextDocument(vscode.Uri.from({ scheme: 'codevim-health', path: '/CodeVim Health.md' }));
+    const md = report.getText();
+    assert.ok(md.includes('Connected to VS Code'), md);
+    assert.ok(!md.includes("doesn't have"), md);
+    assert.ok(!md.includes('❌'), md);
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  });
+
   console.log('\nCodeVim e2e results:\n' + results.join('\n') + '\n');
   if (results.some((r) => r.includes('FAIL'))) {
     throw new Error('some e2e tests failed');

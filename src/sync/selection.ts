@@ -63,3 +63,27 @@ export function cursorToSelections(p: CursorPayload, lineAt: (line: number) => s
     }
   }
 }
+
+/** Cells of a visual block drawn past the end of one line (VS Code can't select there). */
+export interface BlockOverhang {
+  line: number;
+  /** Blank cells between the end of the line and the block. */
+  gap: number;
+  /** Selected cells after the gap. */
+  width: number;
+  /** The cursor's cell, counted from the end of the line (0-based), if it is past it. */
+  cursor?: number;
+}
+
+/** The parts of a blockwise visual selection that lie past the end of lines ('virtualedit'). */
+export function blockOverhangs(p: CursorPayload): BlockOverhang[] {
+  if (!p.block || parseMode(p.mode).kind !== 'visualBlock') return [];
+  const out: BlockOverhang[] = [];
+  for (const [line, , , gap = 0, pad = 0] of p.block) {
+    if (pad <= 0) continue;
+    const o: BlockOverhang = { line, gap, width: pad };
+    if (line === p.line && p.past_eol) o.cursor = p.past_eol - 1;
+    out.push(o);
+  }
+  return out;
+}

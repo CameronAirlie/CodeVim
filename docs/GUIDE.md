@@ -63,9 +63,35 @@ working as long as that extension is installed.
 | Click                                           | Moves Neovim's cursor.                                                                                                                                                              |
 | Scroll                                          | Neovim's view follows, and the cursor is pulled into view as in Vim. `zz`, `zt`, `<C-d>`, `<C-u>` and `scrolloff` scroll the VS Code editor.                                        |
 
-The cursor shape follows the mode: block in normal, line in insert, underline while
-an operator is pending. The `-- MODE --` item on the left of the status bar opens the
+The cursor shape follows the mode: a line where you can type (insert and replace
+mode) and a block everywhere else (`codevim.cursorStyle.<mode>` changes it). The `-- MODE --` item on the left of the status bar opens the
 log. `recording @q` and pending keys (`showcmd`) appear in the status bar too.
+
+### Folding, jumps and undo
+
+- **Folds belong to VS Code.** `zc`, `zo`, `za`, `zC`, `zO`, `zA`, `zv`, `zR`, `zM`
+  fold and unfold in the VS Code editor (counts work: `2zc` closes two levels), `zj`,
+  `zk` and `[z` move between folds, and in visual mode `zf` creates a fold and `zd`
+  removes it. `j`, `k`, `gj`, `gk` and the arrow keys step over a collapsed fold the
+  way they step over a closed fold in Vim. Neovim's own folds (`foldmethod`) are turned
+  off in windows that show a document, so they can't hide lines VS Code shows.
+- **One jump history.** VS Code's *Go Back* / *Go Forward* keys (`alt+left` /
+  `alt+right` on Windows) run `<C-o>` / `<C-i>` in normal mode. Jumps made by VS Code
+  (Go to Definition, Go to Line, outline, search results) are added to Neovim's
+  jumplist, so `<C-o>` returns from them too.
+- **One undo history.** Outside insert mode `ctrl+z` runs `u` and `ctrl+shift+z` runs
+  `<C-r>` (`ctrl+y` too, unless `y` is in `ctrlKeys.normal`, where it scrolls). Undo
+  and Redo from the Edit menu or other extensions also go through Neovim's undo tree.
+  In insert mode VS Code's undo applies to what you're typing.
+
+**Visual blocks past the end of a line.** `<C-v>` blocks can extend into the empty
+space after shorter lines, as with Vim's `:set virtualedit=block` (CodeVim sets it when
+your config leaves `virtualedit` empty). VS Code can't select past the end of a line,
+so that part of the block, and the cursor when it is out there, is drawn after the
+text.
+
+If your config already maps one of these keys, CodeVim leaves your mapping alone, and
+*CodeVim: Check Health* lists it.
 
 ### Navigation between VS Code and Neovim
 
@@ -221,6 +247,10 @@ ones:
 | `navigation.windowKeymaps` / `.commandAbbreviations` | `true`            | `<C-w>` and `:q`/`:sp` mapping                                                           |
 | `viewport.syncScroll`                                | `true`            | sync scrolling both ways                                                                 |
 | `cursorStyle.<mode>`                                 | block/line/…      | cursor shape per mode                                                                    |
+| `features`: `folding` / `jumplist` / `undo`          | on                | fold keys, Go Back/Forward via the jumplist, undo through Neovim                         |
+| `visualBlock.pastLineEnd`                            | `true`            | `<C-v>` blocks can extend past short lines (`virtualedit=block` if your config sets none) |
+| `statusline.position`                                | `statusBar`       | mode/cmdline/messages in VS Code's status bar, or `editor` for a Vim-style line          |
+| `statusline.colors`                                  | ANSI theme colors | per-mode colour of the mode indicator (status bar text, or the in-editor line)           |
 
 **Ctrl keys.** By default normal mode sends `ctrl+a b d e f i o r u v w x y ] 6 [`
 to Neovim. `ctrl+p`, `ctrl+s`, `ctrl+c` and the others stay with VS Code. Add a
@@ -230,7 +260,14 @@ VS Code-handled typing.
 
 **Commands** (Command Palette, "CodeVim:"): *Restart Neovim*, *Toggle* (also
 `ctrl+shift+alt+n`), *Resync all documents*, *Show Log*, *Show Neovim Messages*,
-*Show Neovim Surface*.
+*Show Neovim Surface*, *Check Health*, *Jump Back* / *Jump Forward*, *Undo* / *Redo*.
+
+**Startup and health.** While Neovim starts, the status bar shows what it is doing
+("loading your config"…). *CodeVim: Check Health* checks the Neovim executable and
+version, whether startup finished, conflicting extensions (VSCodeVim, VSCode Neovim),
+settings, and the Neovim side (config file, clipboard, mappings your config took
+over). If Neovim fails to start, the error notification offers it too. Inside Neovim,
+`:checkhealth codevim` runs the Neovim-side checks.
 
 ---
 
@@ -246,7 +283,8 @@ VS Code-handled typing.
 │        ├── UiSizeController                                          ║    │
 │        └── Features: input · cursor · mode · navigation · viewport   ║    │
 │                      cmdline · messages · searchHighlight            ║    │
-│                      optionSync · bridge · fileCommands · surface ─┐ ║    │
+│                      optionSync · folding · jumplist · undo          ║    │
+│                      bridge · fileCommands · surface ──────────────┐ ║    │
 │                                                    webview (grid) ◄┘ ║    │
 └──────────────────────────────────────────────────────────────────────╫────┘
                                                                        ║
@@ -256,6 +294,9 @@ VS Code-handled typing.
 │   codevim.state    reports mode/cursor/window/viewport/search             │
 │   codevim.cursor   cursor & selection from VS Code                        │
 │   codevim.window   focus, <C-w> maps, :q/:sp commands                     │
+│   codevim.fold / .jumplist / .undo   halves of those features             │
+│   codevim.keymap   default maps that never override yours                 │
+│   codevim.health   :checkhealth codevim and the VS Code health report     │
 │   codevim.clipboard, codevim.notify, vscode (compat API)                  │
 └───────────────────────────────────────────────────────────────────────────┘
 ```
@@ -270,6 +311,7 @@ VS Code-handled typing.
    `require('vscode')` and `vim.g.vscode` are ready when `init.lua` runs.
 3. The UI attaches (`ext_linegrid`, `ext_cmdline`, `ext_messages`, `ext_popupmenu`),
    which is the point where `--embed` loads your config. CodeVim waits for `VimEnter`.
+   Each stage is reported to a status bar progress indicator (`onProgress`).
 
 ### Text sync (`src/sync/documentManager.ts`)
 
@@ -345,7 +387,8 @@ driven by context keys that the input feature keeps up to date:
 - `codevim.active`: the focused editor is mirrored,
 - `codevim.mode`: `normal`, `insert`, `visual`, `cmdline`, …,
 - `codevim.captureKeys`: send special keys to Neovim,
-- `codevim.ctrlKeys`: the list for the current mode.
+- `codevim.ctrlKeys`: the list for the current mode,
+- `codevim.jumplist` / `codevim.undo`: those features are on (gates their keys).
 
 Printable keys arrive through VS Code's `type` command.
 
@@ -385,6 +428,18 @@ The code is split so each behaviour can be changed in isolation:
 3. If it needs new data from Neovim, add a payload type to `src/nvim/protocol.ts`
    (`LuaEvents` or `LuaRequests`) and send it from Lua with
    `require('codevim.rpc').notify('name', payload)` or `.request(...)`.
+4. If it has a Lua half, put it in `runtime/lua/codevim/<name>.lua` with
+   `enable()` / `disable()` and call them from the feature (see `folding.ts`).
+   Install keymaps with `require('codevim.keymap').set('<feature>', modes, lhs, rhs)`:
+   a key the user's config already maps is skipped and reported by the health check.
+5. To handle a VS Code edit yourself instead of having it mirrored into Neovim, use
+   `ctx.documents.interceptChanges((binding, e) => …)` and return `true`; then bring
+   the two back in step with `binding.restoreFromNeovim()` (see `undo.ts`).
+
+**Adding a health check:** implement `HealthCheck` in `src/health/checks/` and add it
+to `HEALTH_CHECKS` in `src/health/index.ts`. Checks get the config and the runtime (if
+Neovim is running) and must work without it. Neovim-side checks go in
+`runtime/lua/codevim/health.lua` and show up in both reports.
 
 **Changing keybindings:** edit `scripts/gen-keybindings.mjs`, then run
 `npm run gen:keybindings`.
@@ -426,7 +481,12 @@ in the Output view) to see every Lua event. Setting the environment variable
   Oil and fugitive, but a busy `:terminal` updates in steps.
 - **Live `:substitute` preview** (`inccommand`) is turned off, because it would edit
   the VS Code document.
-- **Scrolling can drift** when VS Code word-wrap or folding differs from Neovim's.
+- **Scrolling can drift** when VS Code word-wrap differs from Neovim's.
+- **Folds are only known inside the viewport.** VS Code doesn't say which folds are
+  collapsed, so CodeVim works them out from the visible ranges. `j` from the last
+  visible line onto a fold below the screen opens that fold instead of skipping it.
+- **Undo in insert mode** is VS Code's. The text you type is mirrored into Neovim as
+  usual, so `u` afterwards undoes the whole insert.
 - **Two extensions binding the same key:** whichever was registered later wins. If
   another extension takes a key you want, add your own keybinding for
   `codevim.send` with `"args": "<C-x>"`.

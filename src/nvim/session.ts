@@ -22,6 +22,14 @@ export interface SessionOptions {
   /** How long to wait for VimEnter (your config) before giving up. */
   startupTimeoutMs?: number;
   logger: Logger;
+  /** Reports startup stages ("loading your config"…) for a progress indicator. */
+  onProgress?: (stage: string) => void;
+}
+
+export interface NvimVersion {
+  major: number;
+  minor: number;
+  patch: number;
 }
 
 export interface SessionEvents {
@@ -47,6 +55,9 @@ export class NvimSession implements Disposable {
   readonly lua = new EventBus<LuaEvents>();
   readonly mode = new ModeState();
 
+  /** Your config did not finish loading (VimEnter) within the startup timeout. */
+  startupTimedOut = false;
+
   /** Time of the last key sent to Neovim (used to attribute cursor moves). */
   lastInputAt = 0;
 
@@ -65,6 +76,7 @@ export class NvimSession implements Disposable {
     private readonly proc: ChildProcessWithoutNullStreams,
     readonly rpc: RpcClient,
     readonly channel: number,
+    readonly version: NvimVersion,
     private readonly logger: Logger,
     size: { width: number; height: number },
   ) {
@@ -87,6 +99,7 @@ export class NvimSession implements Disposable {
 
   static async start(opts: SessionOptions): Promise<NvimSession> {
     const { logger } = opts;
+    opts.onProgress?.('starting Neovim');
     const env = { ...process.env };
     if (opts.appName) {
       env.NVIM_APPNAME = opts.appName;
@@ -105,7 +118,7 @@ export class NvimSession implements Disposable {
     const rpc = new RpcClient(proc.stdin, proc.stdout, logger);
     try {
       const [channel, apiInfo] = await Promise.race([
-        rpc.request<[number, { version: { major: number; minor: number; patch: number } }]>('nvim_get_api_info'),
+        rpc.request<[number, { version: NvimVersion }]>('nvim_get_api_info'),
         spawnError,
       ]);
       const v = apiInfo.version;
@@ -114,7 +127,7 @@ export class NvimSession implements Disposable {
         throw new Error(`CodeVim needs Neovim ${MIN_VERSION.major}.${MIN_VERSION.minor}+, found ${v.major}.${v.minor}`);
       }
 
-      const session = new NvimSession(proc, rpc, channel, logger, { width: opts.width, height: opts.height });
+      const session = new NvimSession(proc, rpc, channel, v, logger, { width: opts.width, height: opts.height });
       const ready = new Promise<void>((resolve) => {
         const sub = session.lua.on('ready', () => {
           sub.dispose();
@@ -127,6 +140,7 @@ export class NvimSession implements Disposable {
       await rpc.request('nvim_exec_lua', [bootstrap, [runtimeDir, channel, opts.setup]]);
 
       // With --embed, Neovim sources your config only after the UI attaches.
+      opts.onProgress?.('loading your config');
       await rpc.request('nvim_ui_attach', [
         opts.width,
         opts.height,
@@ -139,6 +153,7 @@ export class NvimSession implements Disposable {
         new Promise<boolean>((r) => setTimeout(() => r(true), timeout)),
       ]);
       if (timedOut) {
+        session.startupTimedOut = true;
         logger.warn(`Neovim did not finish startup within ${timeout}ms; continuing anyway`);
       }
       return session;

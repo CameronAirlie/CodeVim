@@ -14,6 +14,20 @@ local last = {
   search_key = nil,
 }
 
+-- With 'virtualedit' including "block", a visual block can reach past the end of
+-- shorter lines. Returns its screen columns {left, right} (1-based, inclusive), or
+-- nil when nothing can be past the end of a line.
+local function virtual_block_columns()
+  local ve = vim.o.virtualedit
+  if not (ve:find('block') or ve:find('all')) or vim.fn.winsaveview().curswant == vim.v.maxcol then
+    return nil -- `$` selects to the end of every line, never past it
+  end
+  local v, c = vim.fn.getpos('v'), vim.fn.getpos('.')
+  local vv = vim.fn.virtcol({ v[2], v[3], v[4] }, 1)
+  local cv = vim.fn.virtcol({ c[2], c[3], c[4] }, 1)
+  return math.min(vv[1], cv[1]), math.max(vv[2], cv[2])
+end
+
 local function block_ranges()
   if vim.fn.exists('*getregionpos') == 0 then
     return nil
@@ -22,13 +36,32 @@ local function block_ranges()
   if not ok then
     return nil
   end
+  local left, right = virtual_block_columns()
   local ranges = {}
   for _, r in ipairs(region) do
     local s, e = r[1], r[2]
-    -- [line, start byte, end byte (exclusive)]
-    table.insert(ranges, { s[2] - 1, s[3] - 1, e[3] })
+    local text = util.get_line(0, s[2] - 1)
+    local width = vim.fn.strdisplaywidth(text)
+    -- [line, start byte, end byte (exclusive), gap, pad]: past the end of the line,
+    -- `gap` blank cells come before `pad` selected ones.
+    local range = { s[2] - 1, s[3] - 1, e[3] }
+    if s[3] == 0 or (left and left > width) then
+      range[2], range[3] = #text, #text -- the block starts past the end of this line
+    end
+    if left and right > width then
+      range[4] = math.max(0, left - 1 - width)
+      range[5] = right - math.max(width, left - 1)
+    end
+    table.insert(ranges, range)
   end
   return ranges
+end
+
+--- Cells the cursor is past the end of its line (virtualedit), or nil.
+local function cursor_past_eol()
+  local c = vim.fn.getpos('.')
+  local past = vim.fn.virtcol({ c[2], c[3], c[4] }, 1)[1] - vim.fn.strdisplaywidth(util.get_line(0, c[2] - 1))
+  return past > 0 and past or nil
 end
 
 function M.cursor_payload(mode)
@@ -40,6 +73,7 @@ function M.cursor_payload(mode)
     p.vline, p.vcol = v[2] - 1, v[3] - 1
     if mode:sub(1, 1) == '\22' then
       p.block = block_ranges()
+      p.past_eol = cursor_past_eol()
     end
   end
   return p

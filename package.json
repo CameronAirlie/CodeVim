@@ -62,6 +62,31 @@
         "command": "codevim.showSurface",
         "title": "Show Neovim Surface",
         "category": "CodeVim"
+      },
+      {
+        "command": "codevim.checkHealth",
+        "title": "Check Health",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.jumpBack",
+        "title": "Jump Back (Neovim jumplist)",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.jumpForward",
+        "title": "Jump Forward (Neovim jumplist)",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.undo",
+        "title": "Undo (Neovim)",
+        "category": "CodeVim"
+      },
+      {
+        "command": "codevim.redo",
+        "title": "Redo (Neovim)",
+        "category": "CodeVim"
       }
     ],
     "configuration": {
@@ -145,6 +170,26 @@
               "type": "boolean",
               "default": true,
               "description": "Draw floating windows over the editor."
+            },
+            "folding": {
+              "type": "boolean",
+              "default": true,
+              "description": "Fold keys (zc, zo, za, zR, zM, zj…) drive VS Code folding; j/k step over collapsed folds."
+            },
+            "jumplist": {
+              "type": "boolean",
+              "default": true,
+              "description": "VS Code's Go Back/Forward keys use Neovim's jumplist; VS Code jumps are added to it."
+            },
+            "undo": {
+              "type": "boolean",
+              "default": true,
+              "description": "Ctrl+Z / Ctrl+Shift+Z and the Edit menu undo through Neovim's undo tree (outside insert mode)."
+            },
+            "virtualSpace": {
+              "type": "boolean",
+              "default": true,
+              "description": "Draw visual-block selections that extend past the end of lines."
             }
           }
         },
@@ -348,6 +393,11 @@
           "default": true,
           "markdownDescription": "Make `:q`, `:wq`, `:x`, `:qa`, `:sp`, `:vs`, `:new` and `:only` act on VS Code editors."
         },
+        "codevim.visualBlock.pastLineEnd": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Let visual-block selections (`<C-v>`) extend past the end of shorter lines, like Vim's `:set virtualedit=block`. Only applied when your Neovim config leaves `'virtualedit'` empty. Takes effect after restarting Neovim."
+        },
         "codevim.messages.errorsAsNotifications": {
           "type": "boolean",
           "default": false,
@@ -374,7 +424,7 @@
             "editor",
             "statusBar"
           ],
-          "default": "editor",
+          "default": "statusBar",
           "markdownEnumDescriptions": [
             "Draw a Vim-style statusline (mode, command line, messages, pending keys) along the bottom of the active editor, coloured by mode.",
             "Show the mode, command line and messages as items in VS Code's status bar."
@@ -384,16 +434,37 @@
           "type": "object",
           "default": {},
           "properties": {
-            "normal": { "type": "string", "default": "terminal.ansiBlue" },
-            "insert": { "type": "string", "default": "terminal.ansiGreen" },
-            "visual": { "type": "string", "default": "terminal.ansiMagenta" },
-            "replace": { "type": "string", "default": "terminal.ansiRed" },
-            "operator": { "type": "string", "default": "terminal.ansiCyan" },
-            "cmdline": { "type": "string", "default": "terminal.ansiYellow" },
-            "terminal": { "type": "string", "default": "terminal.ansiGreen" }
+            "normal": {
+              "type": "string",
+              "default": "terminal.ansiBlue"
+            },
+            "insert": {
+              "type": "string",
+              "default": "terminal.ansiGreen"
+            },
+            "visual": {
+              "type": "string",
+              "default": "terminal.ansiMagenta"
+            },
+            "replace": {
+              "type": "string",
+              "default": "terminal.ansiRed"
+            },
+            "operator": {
+              "type": "string",
+              "default": "terminal.ansiCyan"
+            },
+            "cmdline": {
+              "type": "string",
+              "default": "terminal.ansiYellow"
+            },
+            "terminal": {
+              "type": "string",
+              "default": "terminal.ansiGreen"
+            }
           },
           "additionalProperties": false,
-          "markdownDescription": "Colour of the in-editor statusline per mode: a theme colour id (e.g. `terminal.ansiBlue`) or a hex colour (e.g. `#7aa2f7`). `visual` also covers visual line/block and select mode."
+          "markdownDescription": "Colour of the mode per mode (the status bar item's text, or the in-editor statusline): a theme colour id (e.g. `terminal.ansiBlue`) or a hex colour (e.g. `#7aa2f7`). `visual` also covers visual line/block and select mode."
         },
         "codevim.cursorStyle.normal": {
           "type": "string",
@@ -431,7 +502,7 @@
             "underline",
             "underline-thin"
           ],
-          "default": "line-thin",
+          "default": "block",
           "description": "Cursor in visual modes."
         },
         "codevim.cursorStyle.replace": {
@@ -444,7 +515,7 @@
             "underline",
             "underline-thin"
           ],
-          "default": "underline",
+          "default": "line",
           "description": "Cursor in replace mode."
         },
         "codevim.cursorStyle.operator": {
@@ -457,7 +528,7 @@
             "underline",
             "underline-thin"
           ],
-          "default": "underline",
+          "default": "block",
           "description": "Cursor while an operator is pending (after d, c, y...)."
         },
         "codevim.cursorStyle.cmdline": {
@@ -470,7 +541,7 @@
             "underline",
             "underline-thin"
           ],
-          "default": "block-outline",
+          "default": "block",
           "description": "Cursor while typing on the command line."
         },
         "codevim.surface.viewColumn": {
@@ -806,6 +877,39 @@
       {
         "key": "ctrl+shift+alt+n",
         "command": "codevim.toggle"
+      },
+      {
+        "key": "alt+left",
+        "win": "alt+left",
+        "linux": "ctrl+alt+-",
+        "mac": "ctrl+-",
+        "command": "codevim.jumpBack",
+        "when": "editorTextFocus && codevim.active && codevim.jumplist && codevim.mode == 'normal'"
+      },
+      {
+        "key": "alt+right",
+        "win": "alt+right",
+        "linux": "ctrl+shift+-",
+        "mac": "ctrl+shift+-",
+        "command": "codevim.jumpForward",
+        "when": "editorTextFocus && codevim.active && codevim.jumplist && codevim.mode == 'normal'"
+      },
+      {
+        "key": "ctrl+z",
+        "mac": "cmd+z",
+        "command": "codevim.undo",
+        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !('z' in codevim.ctrlKeys)"
+      },
+      {
+        "key": "ctrl+shift+z",
+        "mac": "cmd+shift+z",
+        "command": "codevim.redo",
+        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline'"
+      },
+      {
+        "key": "ctrl+y",
+        "command": "codevim.redo",
+        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !('y' in codevim.ctrlKeys) && !isMac"
       }
     ]
   },

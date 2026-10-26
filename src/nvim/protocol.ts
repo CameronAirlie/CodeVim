@@ -12,8 +12,13 @@ export interface CursorPayload {
   /** Visual-mode start ('v' mark). */
   vline?: number;
   vcol?: number;
-  /** Blockwise visual: [line, startByte, endByteExclusive] per line. */
-  block?: [number, number, number][];
+  /**
+   * Blockwise visual, per line: [line, startByte, endByteExclusive, gap?, pad?].
+   * Past the end of the line ('virtualedit'), `gap` blank cells precede `pad` selected ones.
+   */
+  block?: [number, number, number, number?, number?][];
+  /** Cells the cursor is past the end of its line (blockwise visual with 'virtualedit'). */
+  past_eol?: number;
 }
 
 export interface ModePayload {
@@ -90,6 +95,39 @@ export interface EvalPayload {
   timeout?: number;
 }
 
+/** Fold commands sent by runtime/lua/codevim/fold.lua; VS Code runs the matching editor command. */
+export type FoldAction =
+  | 'open'
+  | 'openRecursive'
+  | 'close'
+  | 'closeRecursive'
+  | 'toggle'
+  | 'toggleRecursive'
+  | 'openAll'
+  | 'closeAll'
+  | 'create'
+  | 'delete'
+  | 'next'
+  | 'previous'
+  | 'parent';
+
+export interface FoldPayload {
+  buf: number;
+  action: FoldAction;
+  /** Cursor line. */
+  line: number;
+  count: number;
+  /** Other end of the visual selection, when used from visual mode. */
+  vline?: number;
+}
+
+/** A health check result from runtime/lua/codevim/health.lua. */
+export interface HealthItemPayload {
+  level: 'ok' | 'info' | 'warn' | 'error';
+  msg: string;
+  advice?: string;
+}
+
 /** Notifications sent by the runtime: rpcnotify(chan, "codevim", name, payload). */
 export interface LuaEvents {
   ready: Record<string, never>;
@@ -106,6 +144,7 @@ export interface LuaEvents {
   quit: { bang: boolean; all: boolean; uri?: string; foreign?: boolean };
   split: { direction: 'down' | 'right'; file?: string; new: boolean };
   buf_deleted: { buf: number; uri: string };
+  fold: FoldPayload;
 }
 
 /** Requests sent by the runtime: rpcrequest(chan, "codevim_request", method, payload). */
@@ -125,6 +164,8 @@ export interface RuntimeSetupOptions {
   notify: boolean;
   window_keymaps: boolean;
   command_abbreviations: boolean;
+  /** Set 'virtualedit' to "block" unless your config sets 'virtualedit' itself. */
+  virtualedit_block: boolean;
 }
 
 export interface BufLinesEvent {

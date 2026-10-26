@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { ConfigService } from '../config';
-import { DisposableStore } from '../core/disposable';
+import { Disposable, DisposableStore, toDisposable } from '../core/disposable';
 import { Emitter } from '../core/events';
 import { Logger, scopedLogger } from '../core/logger';
 import { WindowPayload } from '../nvim/protocol';
@@ -125,13 +125,17 @@ export class DocumentBinding {
     }
   }
 
-  onDocumentChange(e: vscode.TextDocumentChangeEvent, insertMode: boolean): void {
+  /** A content change made in VS Code (not one CodeVim applied from Neovim). */
+  isVscodeChange(e: vscode.TextDocumentChangeEvent): boolean {
     if (this.applyingToDocument > 0 || !this.initialized || e.contentChanges.length === 0) {
-      return;
+      return false;
     }
-    if (this.isForeign && this.matchesMirror()) {
-      return; // VS Code reloaded the content we published
-    }
+    // For plugin buffers: VS Code reloaded the content we published.
+    return !(this.isForeign && this.matchesMirror());
+  }
+
+  /** Mirrors a VS Code change into Neovim. Call only for {@link isVscodeChange} events. */
+  onDocumentChange(e: vscode.TextDocumentChangeEvent, insertMode: boolean): void {
     this.lastVscodeEditAt = Date.now();
     const edits = [...e.contentChanges]
       .sort((a, b) => b.rangeOffset - a.rangeOffset)
@@ -139,6 +143,15 @@ export class DocumentBinding {
     const join = insertMode && this.insertEdits++ > 0;
     this.logger.trace(`send to buf ${this.buf}: ${JSON.stringify(edits)} join=${join}`);
     this.track(this.session.call('codevim.buffer', 'apply_edits', [this.buf, edits, join]));
+  }
+
+  /**
+   * Makes the document match Neovim's buffer again, e.g. after a VS Code change that
+   * a {@link ChangeInterceptor} kept from reaching Neovim.
+   */
+  restoreFromNeovim(): void {
+    this.needsFlush = true;
+    this.scheduleFlush();
   }
 
   /** Replaces Neovim's buffer with the document content. */
@@ -253,6 +266,13 @@ export class DocumentBinding {
   }
 }
 
+/**
+ * Lets a feature handle a VS Code change itself instead of having it mirrored into
+ * Neovim. Returns true to claim the change; the feature then owns bringing the two
+ * back in step (usually via {@link DocumentBinding.restoreFromNeovim}).
+ */
+export type ChangeInterceptor = (binding: DocumentBinding, e: vscode.TextDocumentChangeEvent) => boolean;
+
 /** Creates, tracks and tears down {@link DocumentBinding}s. */
 export class DocumentManager implements vscode.Disposable {
   private readonly byUri = new Map<string, DocumentBinding>();
@@ -262,6 +282,7 @@ export class DocumentManager implements vscode.Disposable {
   private readonly disposables = new DisposableStore();
   private readonly logger: Logger;
 
+  private readonly interceptors = new Set<ChangeInterceptor>();
   private readonly bindEmitter = new Emitter<DocumentBinding>();
   readonly onDidBind = this.bindEmitter.event;
   /** Backs the codevim-buffer: documents that show plugin buffers. */
@@ -274,7 +295,7 @@ export class DocumentManager implements vscode.Disposable {
   ) {
     this.logger = scopedLogger(logger, 'documents');
     const d = this.disposables;
-    d.add(vscode.workspace.onDidChangeTextDocument((e) => this.get(e.document)?.onDocumentChange(e, session.mode.current.isInsertLike)));
+    d.add(vscode.workspace.onDidChangeTextDocument((e) => this.onDocumentChange(e)));
     d.add(vscode.workspace.onDidCloseTextDocument((doc) => this.unbind(doc)));
     d.add(vscode.workspace.onDidSaveTextDocument((doc) => {
       const b = this.get(doc);
@@ -304,6 +325,21 @@ export class DocumentManager implements vscode.Disposable {
       }
     }));
     this.bindEditors(vscode.window.visibleTextEditors);
+  }
+
+  /** Registers a {@link ChangeInterceptor}; interceptors run in registration order. */
+  interceptChanges(interceptor: ChangeInterceptor): Disposable {
+    this.interceptors.add(interceptor);
+    return toDisposable(() => this.interceptors.delete(interceptor));
+  }
+
+  private onDocumentChange(e: vscode.TextDocumentChangeEvent): void {
+    const binding = this.get(e.document);
+    if (!binding?.isVscodeChange(e)) return;
+    for (const intercept of this.interceptors) {
+      if (intercept(binding, e)) return;
+    }
+    binding.onDocumentChange(e, this.session.mode.current.isInsertLike);
   }
 
   isSupported(doc: vscode.TextDocument): boolean {

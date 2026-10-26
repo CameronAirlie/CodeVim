@@ -12,7 +12,8 @@ function M.active()
   return M.channel ~= nil
 end
 
-function M.setup(channel, opts)
+---@param runtime_dir? string CodeVim's runtime directory (for 'runtimepath')
+function M.setup(channel, opts, runtime_dir)
   M.channel = channel
   M.opts = opts or {}
 
@@ -52,6 +53,15 @@ function M.setup(channel, opts)
       -- Live :substitute previews edit the buffer, which would leak into the VS Code
       -- document (and its undo stack), so they are turned off.
       vim.o.inccommand = ''
+      -- Visual blocks can extend past the end of shorter lines (VS Code draws the
+      -- cells there), unless your config chose its own 'virtualedit'.
+      if M.opts.virtualedit_block and vim.o.virtualedit == '' then
+        vim.o.virtualedit = 'block'
+      end
+      -- Plugin managers may have reset 'runtimepath'; :checkhealth codevim needs it.
+      if runtime_dir and not vim.tbl_contains(vim.opt.runtimepath:get(), runtime_dir) then
+        vim.opt.runtimepath:append(runtime_dir)
+      end
       ignore_existing_buffers()
       require('codevim.rpc').notify('ready', {})
     end,

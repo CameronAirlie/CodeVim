@@ -16,4 +16,4 @@ for path, kind in vim.fs.dir(lua_dir, { depth = 4 }) do
 end
 
 vim.opt.runtimepath:append(runtime)
-require('codevim').setup(channel, opts)
+require('codevim').setup(channel, opts, runtime)
