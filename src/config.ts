@@ -26,7 +26,7 @@ export interface CodeVimConfig {
   insertEscapeSequence: string;
   insertEscapeTimeout: number;
   dotRepeat: boolean;
-  ctrlKeys: { normal: string[]; insert: string[]; cmdline: string[]; plugin: string[] };
+  ctrlKeys: { normal: string[]; insert: string[]; cmdline: string[]; plugin: string[]; fromNeovim: boolean };
   floats: { display: FloatDisplay; colors: 'vscode' | 'neovim' };
   pluginBuffers: { display: PluginBufferDisplay; viewColumn: 'auto' | 'active' | 'beside' };
   useVscodeClipboard: boolean;
@@ -78,6 +78,7 @@ function read(): CodeVimConfig {
       insert: c.get('ctrlKeys.insert', []),
       cmdline: c.get('ctrlKeys.cmdline', []),
       plugin: c.get('ctrlKeys.plugin', []),
+      fromNeovim: c.get('ctrlKeys.fromNeovim', true),
     },
     floats: {
       display: c.get('floats.display', 'overlay'),

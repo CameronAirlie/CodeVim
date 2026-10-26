@@ -26,6 +26,8 @@ export interface ModePayload {
   old: string;
   internal: boolean;
   cursor?: CursorPayload;
+  /** Insert/cmdline mode: Ctrl keys (`codevim.ctrlKeys` names) Neovim gives a meaning there, built in or mapped. */
+  ctrl_keys?: string[];
 }
 
 export type BufferKind = 'bound' | 'file' | 'scratch' | 'special' | 'ignored';

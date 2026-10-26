@@ -29,6 +29,11 @@ const special = [
 const ctrl = [...'abcdefghijklmnopqrstuvwxyz'].map((c) => [c, c]);
 ctrl.push([']', ']'], ['6', '^'], ['/', '/'], ['space', 'Space'], ['[', '[']);
 
+// One boolean context key per Ctrl key (see ctrlContextKey in src/features/keys.ts):
+// when clauses cannot test a literal against a list, and an unparsable clause is
+// dropped, leaving the binding active everywhere.
+const ctrlContext = (key) => `codevim.ctrl.${{ ']': 'rbracket', '[': 'lbracket', '/': 'slash' }[key] ?? key}`;
+
 const keybindings = [
   {
     key: 'escape',
@@ -50,7 +55,7 @@ const keybindings = [
     key: `ctrl+${key}`,
     command: key === '[' ? 'codevim.escape' : 'codevim.send',
     ...(key === '[' ? {} : { args: `<C-${nvim}>` }),
-    when: `${ACTIVE} && '${key}' in codevim.ctrlKeys`,
+    when: `${ACTIVE} && ${ctrlContext(key)}`,
   })),
   {
     key: 'ctrl+shift+alt+n',
@@ -69,9 +74,9 @@ const keybindings = [
   // Undo / redo through Neovim's undo tree outside insert mode. A ctrl key given to
   // Neovim in `codevim.ctrlKeys` (e.g. ctrl+y to scroll) keeps that meaning.
   ...[
-    ['codevim.undo', 'ctrl+z', 'cmd+z', `!('z' in codevim.ctrlKeys)`],
+    ['codevim.undo', 'ctrl+z', 'cmd+z', `!${ctrlContext('z')}`],
     ['codevim.redo', 'ctrl+shift+z', 'cmd+shift+z', null],
-    ['codevim.redo', 'ctrl+y', null, `!('y' in codevim.ctrlKeys) && !isMac`],
+    ['codevim.redo', 'ctrl+y', null, `!${ctrlContext('y')} && !isMac`],
   ].map(([command, key, mac, extra]) => ({
     key,
     ...(mac ? { mac } : {}),

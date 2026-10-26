@@ -1,11 +1,11 @@
 {
-  "name": "codevim",
-  "displayName": "CodeVim",
+  "name": "CameronAirlie-codevim",
+  "displayName": "Neovim in VS Code",
   "icon": "media/codevim-logo.png",
   "description": "Embed your real Neovim (and your config) inside VS Code, with seamless navigation between the two.",
   "version": "0.1.0",
-  "publisher": "codevim",
-  "license": "UNLICENSED",
+  "publisher": "CameronAirlie",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -252,6 +252,7 @@
             "type": "string"
           },
           "default": [
+            "c",
             "w",
             "u",
             "o",
@@ -261,6 +262,11 @@
           ],
           "description": "Ctrl+key combinations sent to Neovim in insert mode."
         },
+        "codevim.ctrlKeys.fromNeovim": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "In the command line, and in insert mode when `#codevim.insert.strategy#` is `neovim`, also send every Ctrl key Neovim gives a meaning there: built-in commands (`<C-r>`, `<C-x>`, `<C-v>`…) and keys your config or plugins map (e.g. a completion menu's `<C-y>`). Unused keys such as `ctrl+s` keep their VS Code meaning unless mapped."
+        },
         "codevim.ctrlKeys.cmdline": {
           "type": "array",
           "items": {
@@ -269,6 +275,7 @@
           "default": [
             "a",
             "b",
+            "c",
             "e",
             "f",
             "g",
@@ -694,186 +701,186 @@
         "key": "ctrl+a",
         "command": "codevim.send",
         "args": "<C-a>",
-        "when": "editorTextFocus && codevim.active && 'a' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.a"
       },
       {
         "key": "ctrl+b",
         "command": "codevim.send",
         "args": "<C-b>",
-        "when": "editorTextFocus && codevim.active && 'b' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.b"
       },
       {
         "key": "ctrl+c",
         "command": "codevim.send",
         "args": "<C-c>",
-        "when": "editorTextFocus && codevim.active && 'c' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.c"
       },
       {
         "key": "ctrl+d",
         "command": "codevim.send",
         "args": "<C-d>",
-        "when": "editorTextFocus && codevim.active && 'd' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.d"
       },
       {
         "key": "ctrl+e",
         "command": "codevim.send",
         "args": "<C-e>",
-        "when": "editorTextFocus && codevim.active && 'e' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.e"
       },
       {
         "key": "ctrl+f",
         "command": "codevim.send",
         "args": "<C-f>",
-        "when": "editorTextFocus && codevim.active && 'f' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.f"
       },
       {
         "key": "ctrl+g",
         "command": "codevim.send",
         "args": "<C-g>",
-        "when": "editorTextFocus && codevim.active && 'g' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.g"
       },
       {
         "key": "ctrl+h",
         "command": "codevim.send",
         "args": "<C-h>",
-        "when": "editorTextFocus && codevim.active && 'h' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.h"
       },
       {
         "key": "ctrl+i",
         "command": "codevim.send",
         "args": "<C-i>",
-        "when": "editorTextFocus && codevim.active && 'i' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.i"
       },
       {
         "key": "ctrl+j",
         "command": "codevim.send",
         "args": "<C-j>",
-        "when": "editorTextFocus && codevim.active && 'j' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.j"
       },
       {
         "key": "ctrl+k",
         "command": "codevim.send",
         "args": "<C-k>",
-        "when": "editorTextFocus && codevim.active && 'k' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.k"
       },
       {
         "key": "ctrl+l",
         "command": "codevim.send",
         "args": "<C-l>",
-        "when": "editorTextFocus && codevim.active && 'l' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.l"
       },
       {
         "key": "ctrl+m",
         "command": "codevim.send",
         "args": "<C-m>",
-        "when": "editorTextFocus && codevim.active && 'm' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.m"
       },
       {
         "key": "ctrl+n",
         "command": "codevim.send",
         "args": "<C-n>",
-        "when": "editorTextFocus && codevim.active && 'n' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.n"
       },
       {
         "key": "ctrl+o",
         "command": "codevim.send",
         "args": "<C-o>",
-        "when": "editorTextFocus && codevim.active && 'o' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.o"
       },
       {
         "key": "ctrl+p",
         "command": "codevim.send",
         "args": "<C-p>",
-        "when": "editorTextFocus && codevim.active && 'p' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.p"
       },
       {
         "key": "ctrl+q",
         "command": "codevim.send",
         "args": "<C-q>",
-        "when": "editorTextFocus && codevim.active && 'q' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.q"
       },
       {
         "key": "ctrl+r",
         "command": "codevim.send",
         "args": "<C-r>",
-        "when": "editorTextFocus && codevim.active && 'r' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.r"
       },
       {
         "key": "ctrl+s",
         "command": "codevim.send",
         "args": "<C-s>",
-        "when": "editorTextFocus && codevim.active && 's' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.s"
       },
       {
         "key": "ctrl+t",
         "command": "codevim.send",
         "args": "<C-t>",
-        "when": "editorTextFocus && codevim.active && 't' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.t"
       },
       {
         "key": "ctrl+u",
         "command": "codevim.send",
         "args": "<C-u>",
-        "when": "editorTextFocus && codevim.active && 'u' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.u"
       },
       {
         "key": "ctrl+v",
         "command": "codevim.send",
         "args": "<C-v>",
-        "when": "editorTextFocus && codevim.active && 'v' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.v"
       },
       {
         "key": "ctrl+w",
         "command": "codevim.send",
         "args": "<C-w>",
-        "when": "editorTextFocus && codevim.active && 'w' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.w"
       },
       {
         "key": "ctrl+x",
         "command": "codevim.send",
         "args": "<C-x>",
-        "when": "editorTextFocus && codevim.active && 'x' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.x"
       },
       {
         "key": "ctrl+y",
         "command": "codevim.send",
         "args": "<C-y>",
-        "when": "editorTextFocus && codevim.active && 'y' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.y"
       },
       {
         "key": "ctrl+z",
         "command": "codevim.send",
         "args": "<C-z>",
-        "when": "editorTextFocus && codevim.active && 'z' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.z"
       },
       {
         "key": "ctrl+]",
         "command": "codevim.send",
         "args": "<C-]>",
-        "when": "editorTextFocus && codevim.active && ']' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.rbracket"
       },
       {
         "key": "ctrl+6",
         "command": "codevim.send",
         "args": "<C-^>",
-        "when": "editorTextFocus && codevim.active && '6' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.6"
       },
       {
         "key": "ctrl+/",
         "command": "codevim.send",
         "args": "<C-/>",
-        "when": "editorTextFocus && codevim.active && '/' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.slash"
       },
       {
         "key": "ctrl+space",
         "command": "codevim.send",
         "args": "<C-Space>",
-        "when": "editorTextFocus && codevim.active && 'space' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.space"
       },
       {
         "key": "ctrl+[",
         "command": "codevim.escape",
-        "when": "editorTextFocus && codevim.active && '[' in codevim.ctrlKeys"
+        "when": "editorTextFocus && codevim.active && codevim.ctrl.lbracket"
       },
       {
         "key": "ctrl+shift+alt+n",
@@ -899,7 +906,7 @@
         "key": "ctrl+z",
         "mac": "cmd+z",
         "command": "codevim.undo",
-        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !('z' in codevim.ctrlKeys)"
+        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !codevim.ctrl.z"
       },
       {
         "key": "ctrl+shift+z",
@@ -910,7 +917,7 @@
       {
         "key": "ctrl+y",
         "command": "codevim.redo",
-        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !('y' in codevim.ctrlKeys) && !isMac"
+        "when": "editorTextFocus && codevim.active && codevim.undo && codevim.mode != 'insert' && codevim.mode != 'replace' && codevim.mode != 'cmdline' && !codevim.ctrl.y && !isMac"
       }
     ]
   },

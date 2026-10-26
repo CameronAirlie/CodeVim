@@ -62,6 +62,8 @@ export function parseMode(raw: string): Mode {
   };
 }
 
+
+
 function classify(raw: string): ModeKind {
   if (raw.startsWith('no')) {
     return 'operator';

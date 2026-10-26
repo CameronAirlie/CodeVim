@@ -4,7 +4,7 @@ import { Mode } from '../core/mode';
 import { scopedLogger } from '../core/logger';
 import { DocumentBinding } from '../sync/documentManager';
 import { FeatureContext, FeatureDefinition } from './feature';
-import { textToNvimKeys } from './keys';
+import { CTRL_KEYS, ctrlContextKey, textToNvimKeys } from './keys';
 
 /**
  * Tracks one insert-mode session typed in VS Code, so it can be replayed into
@@ -55,6 +55,10 @@ class InputFeature implements vscode.Disposable {
   private insertSession: InsertSession | undefined;
   private escapePending: { char: string; at: number } | undefined;
   private pendingRelease: (() => void) | undefined;
+  /** Ctrl keys Neovim gives a meaning in the current mode (built in or mapped). */
+  private nvimCtrlKeys: string[] = [];
+  /** Last value set for each `codevim.ctrl.*` context key. */
+  private readonly ctrlContext = new Map<string, boolean>();
 
   constructor(private readonly ctx: FeatureContext) {
     this.log = scopedLogger(ctx.logger, 'input');
@@ -64,6 +68,10 @@ class InputFeature implements vscode.Disposable {
     d.add(vscode.commands.registerCommand('codevim.send', (key: string) => this.send(key)));
     d.add(vscode.commands.registerCommand('codevim.escape', () => this.escape()));
     d.add(session.mode.onDidChange((mode) => this.onModeChange(mode)));
+    d.add(session.lua.on('mode', (p) => {
+      this.nvimCtrlKeys = p.ctrl_keys ?? [];
+      this.updateContext(session.mode.current);
+    }));
     d.add(vscode.workspace.onDidChangeTextDocument((e) => this.insertSession?.onChange(e)));
     d.add(ctx.config.onDidChange(() => this.updateContext(session.mode.current)));
     d.add(session.onDidChangeWindow(() => this.updateContext(session.mode.current)));
@@ -117,6 +125,8 @@ class InputFeature implements vscode.Disposable {
     const binding = this.activeBinding();
     if (!binding) return;
     if (this.vscodeTypes) {
+      // VS Code owns the typing: <C-c> leaves insert mode like <Esc>, syncing it first.
+      if (key === '<C-c>') return this.escape();
       await this.pushCursor(binding);
     }
     this.ctx.session.input(key);
@@ -184,17 +194,37 @@ class InputFeature implements vscode.Disposable {
     const keys = this.ctx.session.pluginFocused
       ? cfg.ctrlKeys.plugin
       : mode.kind === 'cmdline'
-        ? cfg.ctrlKeys.cmdline
+        ? this.withNeovimKeys(cfg.ctrlKeys.cmdline, true)
         : mode.isInsertLike
-          ? cfg.ctrlKeys.insert
+          ? this.withNeovimKeys(cfg.ctrlKeys.insert, mode.kind === 'insert' && !this.vscodeTypes)
           : cfg.ctrlKeys.normal;
-    void vscode.commands.executeCommand('setContext', 'codevim.ctrlKeys', keys);
+    const enabled = new Set(keys);
+    for (const key of CTRL_KEYS) {
+      const on = enabled.has(key);
+      if (this.ctrlContext.get(key) !== on) {
+        this.ctrlContext.set(key, on);
+        void vscode.commands.executeCommand('setContext', ctrlContextKey(key), on);
+      }
+    }
     void vscode.commands.executeCommand('setContext', 'codevim.captureKeys', !this.vscodeTypes);
+  }
+
+  /**
+   * Adds the Ctrl keys Neovim reported for this mode (built-in commands such as <C-r>,
+   * and maps such as a completion menu's <C-y>), whatever the config uses. Not while
+   * VS Code handles insert-mode typing: those keys keep their VS Code meaning.
+   */
+  private withNeovimKeys(keys: string[], neovimTypes: boolean): string[] {
+    if (!neovimTypes || !this.ctx.config.current.ctrlKeys.fromNeovim) return keys;
+    return [...new Set([...keys, ...this.nvimCtrlKeys])];
   }
 
   dispose(): void {
     this.disposables.dispose();
     void vscode.commands.executeCommand('setContext', 'codevim.captureKeys', false);
+    for (const key of this.ctrlContext.keys()) {
+      void vscode.commands.executeCommand('setContext', ctrlContextKey(key), false);
+    }
   }
 }
 

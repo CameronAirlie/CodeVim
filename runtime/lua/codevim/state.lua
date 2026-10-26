@@ -322,6 +322,41 @@ local function report_search()
   rpc.notify('hlsearch', payload)
 end
 
+-- Ctrl keys VS Code can send (names as in `codevim.ctrlKeys`) and the lhs forms
+-- Neovim may have them mapped under. `<C-[>` is <Esc>, which CodeVim always handles.
+local ctrl_lhs = { [']'] = { '<C-]>' }, ['6'] = { '<C-^>' }, ['/'] = { '<C-/>', '<C-_>' }, space = { '<C-Space>', '<C-@>' } }
+for c in ('abcdefghijklmnopqrstuvwxyz'):gmatch('.') do
+  ctrl_lhs[c] = { '<C-' .. c .. '>' }
+end
+
+-- Ctrl keys with a built-in command (`:h ins-special-keys`, `:h cmdline-editing`).
+-- Keys Vim leaves unused (insert <C-b>/<C-f>/<C-l>/<C-s>/<C-z>…) keep their VS Code
+-- meaning unless something maps them.
+local builtin_ctrl = {
+  i = 'acdeghijkmnopqrtuvwxy]6[',
+  c = 'abcdefghijklmnpqrtuvw]6[',
+}
+
+--- Ctrl keys Neovim gives a meaning in `mode` ('i' or 'c'): built-in commands plus
+--- maps for the current buffer (your config, or plugins such as completion menus).
+local function ctrl_keys(mode)
+  local keys = {}
+  for name, lhs in pairs(ctrl_lhs) do
+    local builtin = #name == 1 and builtin_ctrl[mode]:find(name, 1, true)
+    if builtin then
+      table.insert(keys, name)
+    else
+      for _, l in ipairs(lhs) do
+        if next(vim.fn.maparg(l, mode, false, true)) ~= nil then
+          table.insert(keys, name)
+          break
+        end
+      end
+    end
+  end
+  return keys
+end
+
 function M.setup()
   local group = vim.api.nvim_create_augroup('codevim.state', { clear = true })
   local au = function(events, cb)
@@ -338,6 +373,11 @@ function M.setup()
     -- Cmdline/operator-pending modes don't move the cursor; only send it when useful.
     if new:sub(1, 1) ~= 'c' then
       payload.cursor = M.cursor_payload(new)
+    end
+    -- InsertEnter/CmdlineEnter have run by now, so maps plugins add there are included.
+    local kind = new:sub(1, 1)
+    if kind == 'i' or kind == 'c' then
+      payload.ctrl_keys = ctrl_keys(kind)
     end
     rpc.notify('mode', payload)
   end)

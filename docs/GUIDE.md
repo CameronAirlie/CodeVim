@@ -236,6 +236,7 @@ ones:
 | `insert.escapeSequence`                              | `""`              | e.g. `jk` to leave insert mode                                                           |
 | `insert.dotRepeat`                                   | `true`            | replay VS Code typing so `.` works                                                       |
 | `ctrlKeys.normal` / `.insert` / `.cmdline`           | see Settings      | which `ctrl+<key>` combos go to Neovim in each mode; the rest keep their VS Code meaning |
+| `ctrlKeys.fromNeovim`                                | `true`            | in the cmdline (and insert mode with `insert.strategy: neovim`), Ctrl keys Neovim gives a meaning, built in or mapped, go to Neovim |
 | `features`                                           | `{}`              | turn off optional features, e.g. `{ "surface": false, "viewport": false }`               |
 | `floats.display`                                     | `overlay`         | `overlay` (over the editor) / `surface` / `none`                                         |
 | `floats.colors`                                      | `vscode`          | map float colours to the VS Code theme, or keep `neovim`'s                               |
@@ -387,7 +388,8 @@ driven by context keys that the input feature keeps up to date:
 - `codevim.active`: the focused editor is mirrored,
 - `codevim.mode`: `normal`, `insert`, `visual`, `cmdline`, …,
 - `codevim.captureKeys`: send special keys to Neovim,
-- `codevim.ctrlKeys`: the list for the current mode,
+- `codevim.ctrl.<key>`: `ctrl+<key>` goes to Neovim in the current mode (`<key>` is a
+  letter, `6`, `space`, `slash`, `lbracket` or `rbracket`),
 - `codevim.jumplist` / `codevim.undo`: those features are on (gates their keys).
 
 Printable keys arrive through VS Code's `type` command.
