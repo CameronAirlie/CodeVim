@@ -308,6 +308,16 @@ function M.setup()
     rpc.notify('mode', payload)
   end)
 
+  -- Floats are drawn opaque in VS Code. With 'winblend' Neovim mixes the (hidden)
+  -- text behind a float into its cells, which would show through as dim text.
+  au({ 'WinNew', 'OptionSet', 'SafeState' }, function()
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if util.is_float(w) and vim.wo[w].winblend ~= 0 then
+        vim.wo[w].winblend = 0
+      end
+    end
+  end)
+
   au('WinScrolled', report_viewport)
   au({ 'BufEnter', 'WinEnter', 'BufWinEnter', 'WinNew', 'WinClosed', 'TermOpen', 'FileType', 'OptionSet' }, schedule_window_report)
   au({ 'BufEnter', 'WinEnter' }, function()
