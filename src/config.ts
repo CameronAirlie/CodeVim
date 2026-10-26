@@ -7,6 +7,8 @@ export type CursorStyleName = 'block' | 'block-outline' | 'line' | 'line-thin' |
 export type UnfocusedFloats = 'none' | 'focusable' | 'all';
 export type FloatDisplay = 'overlay' | 'surface' | 'none';
 export type PluginBufferDisplay = 'editor' | 'surface';
+export type StatuslinePosition = 'editor' | 'statusBar';
+export type StatuslineModeGroup = 'normal' | 'insert' | 'visual' | 'replace' | 'operator' | 'cmdline' | 'terminal';
 
 export interface FeatureToggles {
   [id: string]: boolean;
@@ -34,6 +36,7 @@ export interface CodeVimConfig {
   syncScroll: boolean;
   syncIndentOptions: boolean;
   uiWidth: number;
+  statusline: { position: StatuslinePosition; colors: Record<StatuslineModeGroup, string> };
   cursorStyle: Record<'normal' | 'insert' | 'visual' | 'replace' | 'operator' | 'cmdline', CursorStyleName>;
   surface: {
     viewColumn: 'active' | 'beside';
@@ -43,6 +46,17 @@ export interface CodeVimConfig {
     passthroughKeys: string[];
   };
 }
+
+/** Theme colour ids (or `#rrggbb`) for the in-editor statusline, per mode. */
+export const DEFAULT_STATUSLINE_COLORS: Record<StatuslineModeGroup, string> = {
+  normal: 'terminal.ansiBlue',
+  insert: 'terminal.ansiGreen',
+  visual: 'terminal.ansiMagenta',
+  replace: 'terminal.ansiRed',
+  operator: 'terminal.ansiCyan',
+  cmdline: 'terminal.ansiYellow',
+  terminal: 'terminal.ansiGreen',
+};
 
 function read(): CodeVimConfig {
   const c = vscode.workspace.getConfiguration('codevim');
@@ -79,6 +93,10 @@ function read(): CodeVimConfig {
     syncScroll: c.get('viewport.syncScroll', true),
     syncIndentOptions: c.get('syncIndentOptions', true),
     uiWidth: c.get('uiWidth', 120),
+    statusline: {
+      position: c.get('statusline.position', 'editor'),
+      colors: { ...DEFAULT_STATUSLINE_COLORS, ...c.get<Partial<Record<StatuslineModeGroup, string>>>('statusline.colors', {}) },
+    },
     cursorStyle: {
       normal: c.get('cursorStyle.normal', 'block'),
       insert: c.get('cursorStyle.insert', 'line'),
@@ -119,6 +137,11 @@ export class ConfigService implements Disposable {
 
   isFeatureEnabled(id: string, defaultValue = true): boolean {
     return this.value.features[id] ?? defaultValue;
+  }
+
+  /** The in-editor statusline replaces the mode, command line and message status bar items. */
+  get statuslineInEditor(): boolean {
+    return this.value.statusline.position === 'editor' && this.isFeatureEnabled('statusline');
   }
 
   dispose(): void {

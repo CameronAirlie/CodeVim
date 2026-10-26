@@ -77,3 +77,16 @@ export function reduceCmdline(state: CmdlineState, events: RedrawEvent[]): boole
   }
   return changed;
 }
+
+/** One-line rendering of the command line: prompt, text with a `▏` cursor, then the wildmenu. */
+export function formatCmdline(s: CmdlineState): string {
+  const before = s.content.slice(0, s.pos);
+  const after = s.content.slice(s.pos);
+  let text = `${s.firstc}${s.prompt}${' '.repeat(s.indent)}${before}▏${after}`;
+  if (s.items.length > 0) {
+    const start = Math.max(0, Math.min(s.selected - 3, s.items.length - 8));
+    const shown = s.items.slice(start, start + 8).map((it, i) => (start + i === s.selected ? `[${it}]` : it));
+    text += `   ${start > 0 ? '… ' : ''}${shown.join(' ')}${start + 8 < s.items.length ? ' …' : ''}`;
+  }
+  return text;
+}

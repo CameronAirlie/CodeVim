@@ -54,9 +54,14 @@ class MessagesFeature implements vscode.Disposable {
     }));
   }
 
+  /** The in-editor statusline shows messages instead of the status bar. */
+  private get inEditor(): boolean {
+    return this.ctx.config.statuslineInEditor;
+  }
+
   private setItem(item: vscode.StatusBarItem, text: string): void {
     const t = text.trim();
-    if (t) {
+    if (t && !this.inEditor) {
       item.text = t.replace(/\$\(/g, '$​(');
       item.show();
     } else {
@@ -88,6 +93,7 @@ class MessagesFeature implements vscode.Disposable {
   }
 
   private flash(text: string, isError: boolean): void {
+    if (this.inEditor) return;
     this.status.text = text;
     this.status.backgroundColor = isError ? new vscode.ThemeColor('statusBarItem.errorBackground') : undefined;
     this.status.show();

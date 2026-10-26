@@ -21,7 +21,6 @@ function channelLogger(channel: vscode.LogOutputChannel): Logger {
     error: (m, ...a) => (tee('error', m), channel.error(m, ...a)),
   };
 }
-
 /** Starts, stops and restarts the {@link Runtime}; owns the extension-level commands. */
 class Controller implements vscode.Disposable {
   private runtime: Runtime | undefined;

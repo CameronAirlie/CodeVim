@@ -10,6 +10,7 @@ import { modeFeature } from './mode';
 import { navigationFeature } from './navigation';
 import { optionSyncFeature } from './optionSync';
 import { searchHighlightFeature } from './searchHighlight';
+import { statuslineFeature } from './statusline';
 import { surfaceFeature } from './surface';
 import { viewportFeature } from './viewport';
 
@@ -24,6 +25,7 @@ export const FEATURES: readonly FeatureDefinition[] = [
   viewportFeature,
   cmdlineFeature,
   messagesFeature,
+  statuslineFeature,
   searchHighlightFeature,
   optionSyncFeature,
   floatOverlayFeature,

@@ -12,6 +12,20 @@ export type ModeKind =
   | 'cmdline'
   | 'terminal';
 
+/** Vim's name for each mode, as shown by 'showmode'. */
+export const MODE_LABELS: Record<ModeKind, string> = {
+  normal: 'NORMAL',
+  insert: 'INSERT',
+  replace: 'REPLACE',
+  visual: 'VISUAL',
+  visualLine: 'V-LINE',
+  visualBlock: 'V-BLOCK',
+  select: 'SELECT',
+  operator: 'PENDING',
+  cmdline: 'COMMAND',
+  terminal: 'TERMINAL',
+};
+
 export interface Mode {
   /** Raw mode string from `nvim_get_mode()` / ModeChanged, e.g. "n", "no", "niI", "V". */
   readonly raw: string;

@@ -368,6 +368,33 @@
           "default": 120,
           "description": "Width (columns) of Neovim's screen. Floating windows such as telescope size themselves to it, so set it to roughly the number of columns your editor shows."
         },
+        "codevim.statusline.position": {
+          "type": "string",
+          "enum": [
+            "editor",
+            "statusBar"
+          ],
+          "default": "editor",
+          "markdownEnumDescriptions": [
+            "Draw a Vim-style statusline (mode, command line, messages, pending keys) along the bottom of the active editor, coloured by mode.",
+            "Show the mode, command line and messages as items in VS Code's status bar."
+          ]
+        },
+        "codevim.statusline.colors": {
+          "type": "object",
+          "default": {},
+          "properties": {
+            "normal": { "type": "string", "default": "terminal.ansiBlue" },
+            "insert": { "type": "string", "default": "terminal.ansiGreen" },
+            "visual": { "type": "string", "default": "terminal.ansiMagenta" },
+            "replace": { "type": "string", "default": "terminal.ansiRed" },
+            "operator": { "type": "string", "default": "terminal.ansiCyan" },
+            "cmdline": { "type": "string", "default": "terminal.ansiYellow" },
+            "terminal": { "type": "string", "default": "terminal.ansiGreen" }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "Colour of the in-editor statusline per mode: a theme colour id (e.g. `terminal.ansiBlue`) or a hex colour (e.g. `#7aa2f7`). `visual` also covers visual line/block and select mode."
+        },
         "codevim.cursorStyle.normal": {
           "type": "string",
           "enum": [

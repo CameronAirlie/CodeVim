@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DisposableStore } from '../../core/disposable';
+import { contentText, lineHeightPx, themeVar } from '../editorOverlay';
 import { FeatureContext, FeatureDefinition } from '../feature';
 import { GridModel } from '../surface/grid';
 import { buildOverlay, OverlayColor, OverlayRun } from './layout';
@@ -11,14 +12,9 @@ function color(c: OverlayColor | undefined): string | vscode.ThemeColor | undefi
   return 'theme' in c ? new vscode.ThemeColor(c.theme) : c.rgb;
 }
 
-/** VS Code's rendered line height for an editor, in pixels. */
-function lineHeightPx(doc: vscode.TextDocument): number {
-  const cfg = vscode.workspace.getConfiguration('editor', doc);
-  const fontSize = cfg.get<number>('fontSize', 14);
-  const lineHeight = cfg.get<number>('lineHeight', 0);
-  if (lineHeight <= 0) return Math.round(fontSize * (process.platform === 'darwin' ? 1.5 : 1.35));
-  if (lineHeight < 8) return Math.round(fontSize * lineHeight);
-  return lineHeight;
+/** The colour as a CSS value, for use in raw CSS. */
+function cssColor(c: OverlayColor): string {
+  return 'theme' in c ? themeVar(c.theme) : c.rgb;
 }
 
 /**
@@ -83,18 +79,21 @@ class FloatOverlayFeature implements vscode.Disposable {
 
   private attachment(r: OverlayRun, lh: number): vscode.ThemableDecorationAttachmentRenderOptions {
     const lines = [r.underline ? 'underline' : '', r.strikethrough ? 'line-through' : ''].filter(Boolean).join(' ') || 'none';
+    // Theme colours such as list.activeSelectionBackground are often translucent and
+    // would let the editor text underneath show through: paint them as a layer over
+    // the opaque editor background instead.
+    const bg = r.bg ? ` background-image: linear-gradient(${cssColor(r.bg)}, ${cssColor(r.bg)});` : '';
     return {
-      // Non-breaking spaces: pseudo-element content would otherwise collapse runs of spaces.
-      contentText: r.text.replace(/ /g, ' '),
+      contentText: contentText(r.text),
       color: color(r.fg),
-      backgroundColor: color(r.bg),
+      backgroundColor: r.bg ? new vscode.ThemeColor('editor.background') : undefined,
       fontWeight: r.bold ? 'bold' : 'normal',
       fontStyle: r.italic ? 'italic' : 'normal',
       // Decorations can't be positioned freely through the API; the CSS is appended
       // to text-decoration to place each run on its screen cell.
       textDecoration:
         `${lines}; position: absolute; top: ${r.row * lh}px; left: ${r.col}ch; height: ${lh}px; line-height: ${lh}px;` +
-        ` z-index: ${100 + r.zindex}; white-space: pre; pointer-events: none`,
+        ` z-index: ${100 + r.zindex}; white-space: pre; pointer-events: none;${bg}`,
     };
   }
 
