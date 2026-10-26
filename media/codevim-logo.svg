@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>CodeVim</title>
+  <desc>A green N nested inside blue code brackets on a transparent background.</desc>
+  <g transform="translate(128 128) scale(1.18 1.75) translate(-128 -128)">
+  <path d="M76 72 28 128 76 184 92 170 56 128 92 86Z" fill="#38AAF2"/>
+  <path d="m180 72 48 56-48 56-16-14 36-42-36-42Z" fill="#38AAF2"/>
+  <path d="M96 76h20l24 62V76h20v104h-20l-24-62v62H96Z" fill="#80D45A"/>
+  </g>
+</svg>

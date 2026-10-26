@@ -92,7 +92,7 @@ class SurfaceFeature implements vscode.Disposable {
       { viewColumn: column, preserveFocus: !focus },
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(this.ctx.extension.extensionUri, 'dist')] },
     );
-    panel.iconPath = vscode.Uri.joinPath(this.ctx.extension.extensionUri, 'media', 'icon.svg');
+    panel.iconPath = vscode.Uri.joinPath(this.ctx.extension.extensionUri, 'media', 'codevim-logo.svg');
     panel.webview.html = this.html(panel.webview);
     panel.webview.onDidReceiveMessage((m: FromWebview) => this.onMessage(m));
     panel.onDidChangeViewState(() => {

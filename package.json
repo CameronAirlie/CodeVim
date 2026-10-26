@@ -1,6 +1,7 @@
 {
   "name": "codevim",
   "displayName": "CodeVim",
+  "icon": "media/codevim-logo.png",
   "description": "Embed your real Neovim (and your config) inside VS Code, with seamless navigation between the two.",
   "version": "0.1.0",
   "publisher": "codevim",
