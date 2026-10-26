@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim"><img src="https://img.shields.io/visual-studio-marketplace/v/CameronAirlie.CameronAirlie-codevim?label=Marketplace&color=3fa9f5" alt="Marketplace version"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim"><img src="https://img.shields.io/visual-studio-marketplace/i/CameronAirlie.CameronAirlie-codevim?label=Installs&color=7ed957" alt="Installs"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim&ssr=false#review-details"><img src="https://img.shields.io/visual-studio-marketplace/r/CameronAirlie.CameronAirlie-codevim?label=Rating" alt="Rating"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim"><img src="https://vsmarketplacebadges.dev/version/CameronAirlie.CameronAirlie-codevim.svg?label=Marketplace&color=3fa9f5" alt="Marketplace version"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim"><img src="https://vsmarketplacebadges.dev/installs-short/CameronAirlie.CameronAirlie-codevim.svg?label=Installs&color=7ed957" alt="Installs"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=CameronAirlie.CameronAirlie-codevim&ssr=false#review-details"><img src="https://vsmarketplacebadges.dev/rating-star/CameronAirlie.CameronAirlie-codevim.svg?label=Rating" alt="Rating"></a>
   <a href="https://github.com/CameronAirlie/CodeVim/actions/workflows/ci.yml"><img src="https://github.com/CameronAirlie/CodeVim/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/CameronAirlie/CodeVim/blob/main/LICENSE"><img src="https://img.shields.io/github/license/CameronAirlie/CodeVim?color=blue" alt="License: MIT"></a>
+  <a href="https://github.com/CameronAirlie/CodeVim/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Neovim-0.10%2B-57A143?logo=neovim&logoColor=white" alt="Neovim 0.10+">
   <img src="https://img.shields.io/badge/VS%20Code-1.90%2B-007ACC?logo=visualstudiocode&logoColor=white" alt="VS Code 1.90+">
 </p>
